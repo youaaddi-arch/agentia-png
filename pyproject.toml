@@ -1,11 +1,14 @@
 [project]
 name = "agentia-png"
-version = "0.1.0"
-description = "Plateforme d'agents IA pour la direction (marketing, marchés publics, commercial, assistanat, administratif, certification RSE) basée sur CrewAI."
+version = "0.2.0"
+description = "Plateforme d'agents IA pour la direction (marketing, marchés publics, commercial, assistanat, administratif, certification RSE) basée sur LangChain + LangGraph."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "crewai>=0.80.0",
+    "langchain>=0.3.0",
+    "langgraph>=0.2.0",
+    "langchain-anthropic>=0.3.0",
+    "langchain-openai>=0.2.0",
     "pyyaml>=6.0",
     "python-dotenv>=1.0.0",
 ]

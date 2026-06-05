@@ -1,8 +1,10 @@
 # 🤖 Agentia PNG
 
 Plateforme d'**agents IA** pour la direction d'entreprise, construite avec
-[CrewAI](https://github.com/crewAIInc/crewAI). Chaque agent incarne un rôle
-métier et produit des livrables professionnels en français.
+[LangChain](https://python.langchain.com) et
+[LangGraph](https://langchain-ai.github.io/langgraph/). Chaque agent incarne un
+rôle métier et produit des livrables professionnels en français. Un graphe
+LangGraph aiguille automatiquement la demande vers le bon responsable.
 
 ## 👥 Les agents
 
@@ -24,9 +26,14 @@ métier et produit des livrables professionnels en français.
 
 ### Étape 1 — Obtenir une clé API
 
-Les agents ont besoin d'un « cerveau » (un modèle d'IA). Le plus simple :
-créez une clé sur **https://platform.openai.com/api-keys** (compte OpenAI).
-Elle ressemble à `sk-...`. Gardez-la, on va la coller à l'étape 3.
+Les agents ont besoin d'un « cerveau » (un modèle d'IA). Par défaut, la
+plateforme utilise **Claude (Anthropic)**. Créez une clé sur
+**https://console.anthropic.com/settings/keys**. Elle ressemble à
+`sk-ant-...`. Gardez-la, on va la coller à l'étape 3.
+
+> Vous préférez OpenAI ? Créez plutôt une clé sur
+> https://platform.openai.com/api-keys et mettez dans `.env` :
+> `OPENAI_API_KEY=sk-...` et `AGENTIA_MODEL=openai:gpt-4o-mini`.
 
 ### Étape 2 — Lancer la plateforme
 
@@ -43,10 +50,10 @@ minutes.)
 ### Étape 3 — Coller votre clé
 
 Au premier lancement, un fichier `.env` est créé. Ouvrez-le, et remplacez
-`sk-...` par votre vraie clé :
+`sk-ant-...` par votre vraie clé :
 
 ```
-OPENAI_API_KEY=sk-votre-cle-ici
+ANTHROPIC_API_KEY=sk-ant-votre-cle-ici
 ```
 
 Relancez `./run.sh` — c'est prêt ! Décrivez votre besoin et cliquez sur
@@ -100,11 +107,13 @@ streamlit run app.py
 
 | Variable | Description | Défaut |
 |----------|-------------|--------|
-| `OPENAI_API_KEY` | Clé API du LLM | — |
-| `AGENTIA_MODEL` | Modèle utilisé par les agents | `gpt-4o-mini` |
+| `ANTHROPIC_API_KEY` | Clé API Claude (fournisseur par défaut) | — |
+| `OPENAI_API_KEY` | Clé API OpenAI (si vous préférez GPT) | — |
+| `AGENTIA_MODEL` | Modèle utilisé, au format `fournisseur:modele` | `anthropic:claude-sonnet-4-6` |
 
-Pour utiliser un autre fournisseur (Anthropic, Groq…), définissez la clé
-correspondante et le modèle, par ex. `AGENTIA_MODEL=anthropic/claude-sonnet-4-6`.
+Exemples de `AGENTIA_MODEL` : `anthropic:claude-sonnet-4-6`,
+`openai:gpt-4o-mini`. La plateforme s'appuie sur `init_chat_model` de LangChain,
+qui détecte automatiquement le fournisseur.
 
 ## 🗂️ Structure du projet
 
@@ -119,7 +128,7 @@ agentia-png/
 ├── tests/                       # Tests automatiques (sans clé API)
 └── src/agentia/
     ├── main.py                  # CLI
-    ├── crew.py                  # Construction des agents/tâches CrewAI
+    ├── engine.py                # Moteur LangGraph (graphe d'agents)
     ├── config_loader.py         # Chargement config + routage automatique
     ├── config/
     │   ├── agents.yaml          # Définition des 6 agents
@@ -143,8 +152,8 @@ La CI GitHub exécute automatiquement ces vérifications sur chaque push.
 - **Ajuster le routage automatique** : éditez les mots-clés dans
   `src/agentia/config_loader.py`.
 - **Ajouter un outil** (recherche web, accès CRM, veille marchés publics…) :
-  créez-le dans `src/agentia/tools/` puis rattachez-le aux agents dans
-  `crew.py`.
+  créez-le dans `src/agentia/tools/` puis branchez-le sur les nœuds du graphe
+  dans `engine.py`.
 
 ## 📄 Licence
 

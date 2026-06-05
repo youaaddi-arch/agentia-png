@@ -1,6 +1,6 @@
 """Chargement et validation de la configuration des agents.
 
-Ce module ne dépend PAS de CrewAI : il ne fait que lire les fichiers YAML et
+Ce module ne dépend PAS de LangChain : il ne fait que lire les fichiers YAML et
 exposer les constantes. Cela permet de le tester sans installer de LLM, et de
 router une demande vers le bon agent sans appeler d'API.
 """

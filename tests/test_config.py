@@ -1,4 +1,4 @@
-"""Tests de la configuration et du routage (sans dépendance à CrewAI)."""
+"""Tests de la configuration et du routage (sans dépendance à LangChain)."""
 
 import sys
 from pathlib import Path

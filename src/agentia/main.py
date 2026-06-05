@@ -37,7 +37,7 @@ from agentia.config_loader import LIBELLES
 
 def _verifier_cle_api() -> None:
     """Avertit clairement si aucune clé API LLM n'est configurée."""
-    cles = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GROQ_API_KEY")
+    cles = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY")
     if not any(os.getenv(c) for c in cles):
         print(
             "\n⚠️  Aucune clé API détectée.\n"
@@ -80,7 +80,7 @@ def _mode_interactif(crew) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Plateforme d'agents IA (CrewAI) — Agentia PNG",
+        description="Plateforme d'agents IA (LangGraph) — Agentia PNG",
     )
     parser.add_argument("--liste", action="store_true", help="Lister les agents")
     parser.add_argument("--agent", help="Clé de l'agent à solliciter (sinon : auto)")
@@ -94,10 +94,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--modele", help="Modèle LLM à utiliser (ex. gpt-4o-mini)")
     args = parser.parse_args(argv)
 
-    # Import tardif : évite de charger CrewAI juste pour --liste / l'aide.
-    from agentia.crew import AgentiaCrew
+    # Import tardif : évite de charger LangChain juste pour --liste / l'aide.
+    from agentia.engine import AgentiaPlatform
 
-    crew = AgentiaCrew(modele=args.modele)
+    crew = AgentiaPlatform(modele=args.modele)
 
     if args.liste:
         _afficher_agents(crew)

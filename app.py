@@ -21,17 +21,17 @@ try:
 except ImportError:
     pass
 
-from agentia.crew import AgentiaCrew
+from agentia.engine import AgentiaPlatform
 
 st.set_page_config(page_title="Agentia PNG", page_icon="🤖", layout="centered")
 
 st.title("🤖 Agentia PNG")
-st.caption("Plateforme d'agents IA pour la direction — propulsée par CrewAI")
+st.caption("Plateforme d'agents IA pour la direction — propulsée par LangChain + LangGraph")
 
 
 @st.cache_resource(show_spinner=False)
-def charger_crew() -> AgentiaCrew:
-    return AgentiaCrew(verbose=False)
+def charger_crew() -> AgentiaPlatform:
+    return AgentiaPlatform(verbose=False)
 
 
 crew = charger_crew()
