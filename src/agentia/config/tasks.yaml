@@ -1,0 +1,80 @@
+# =====================================================================
+# Définition des tâches par défaut pour chaque agent.
+# Les variables {sujet}, {contexte}, {objectif} sont injectées au runtime.
+# =====================================================================
+
+tache_marketing:
+  description: >
+    En tant que Responsable Marketing, élabore un plan d'action marketing
+    concernant : "{sujet}".
+    Contexte fourni : {contexte}
+    Objectif visé : {objectif}
+    Inclure : analyse de la cible, positionnement, canaux recommandés,
+    calendrier, KPI de suivi et estimation budgétaire.
+  expected_output: >
+    Un plan marketing structuré en français (Markdown) avec sections claires,
+    actions concrètes, calendrier et indicateurs de performance (KPI).
+  agent: responsable_marketing
+
+tache_marches_publics:
+  description: >
+    En tant que Responsable Marchés Publics, analyse l'opportunité suivante :
+    "{sujet}".
+    Contexte fourni : {contexte}
+    Objectif visé : {objectif}
+    Inclure : analyse des critères d'attribution, pièces à fournir, points de
+    vigilance, plan du mémoire technique et stratégie pour maximiser la note.
+  expected_output: >
+    Une note d'analyse d'appel d'offres en français (Markdown) avec check-list
+    des pièces, plan de réponse et recommandations stratégiques.
+  agent: responsable_marches_publics
+
+tache_commercial:
+  description: >
+    En tant que Responsable Commercial, traite la demande suivante : "{sujet}".
+    Contexte fourni : {contexte}
+    Objectif visé : {objectif}
+    Inclure : qualification du besoin, argumentaire de vente, proposition de
+    valeur, traitement des objections et prochaines étapes.
+  expected_output: >
+    Une proposition / argumentaire commercial en français (Markdown), persuasif
+    et structuré, avec étapes de suivi.
+  agent: responsable_commercial
+
+tache_assistance_direction:
+  description: >
+    En tant qu'Assistant·e de Direction, traite la demande suivante : "{sujet}".
+    Contexte fourni : {contexte}
+    Objectif visé : {objectif}
+    Cela peut être : rédiger un courrier/CR, préparer un ordre du jour,
+    organiser un agenda ou synthétiser des informations.
+  expected_output: >
+    Le livrable demandé en français (Markdown), professionnel, clair et prêt
+    à l'emploi.
+  agent: assistante_direction
+
+tache_administrative:
+  description: >
+    En tant que Responsable Administratif et Financier, traite la demande
+    suivante : "{sujet}".
+    Contexte fourni : {contexte}
+    Objectif visé : {objectif}
+    Inclure les aspects de conformité, les implications financières et les
+    process administratifs concernés.
+  expected_output: >
+    Une note administrative/financière en français (Markdown), factuelle,
+    avec points de conformité et recommandations.
+  agent: responsable_administratif
+
+tache_certification_rs:
+  description: >
+    En tant que Responsable Certification & RSE, traite la demande suivante :
+    "{sujet}".
+    Contexte fourni : {contexte}
+    Objectif visé : {objectif}
+    Inclure : référentiel applicable, exigences clés, documents à produire,
+    plan de préparation à l'audit et indicateurs RSE.
+  expected_output: >
+    Un plan de conformité/RSE en français (Markdown) avec exigences, livrables
+    documentaires et plan d'action.
+  agent: responsable_certification_rs

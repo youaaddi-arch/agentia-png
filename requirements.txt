@@ -1,0 +1,7 @@
+# Dépendances de la plateforme Agentia PNG
+crewai>=0.80.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Interface web optionnelle
+streamlit>=1.30.0
