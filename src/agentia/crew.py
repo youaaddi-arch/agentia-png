@@ -4,6 +4,7 @@ Ce module charge la configuration des agents et des tâches depuis les fichiers
 YAML, et expose une classe ``AgentiaCrew`` permettant :
 
 * de récupérer un agent par sa clé (ex. ``responsable_marketing``),
+* de laisser la plateforme choisir automatiquement le bon agent (routage),
 * de faire traiter une demande par un seul agent,
 * de lancer l'ensemble de l'équipe sur une demande (processus séquentiel).
 """
@@ -11,40 +12,17 @@ YAML, et expose une classe ``AgentiaCrew`` permettant :
 from __future__ import annotations
 
 import os
-from pathlib import Path
 from typing import Dict
 
-import yaml
 from crewai import Agent, Crew, Process, Task
 
-CONFIG_DIR = Path(__file__).parent / "config"
-
-# Correspondance agent -> tâche par défaut (définie dans tasks.yaml)
-AGENT_TO_TASK: Dict[str, str] = {
-    "responsable_marketing": "tache_marketing",
-    "responsable_marches_publics": "tache_marches_publics",
-    "responsable_commercial": "tache_commercial",
-    "assistante_direction": "tache_assistance_direction",
-    "responsable_administratif": "tache_administrative",
-    "responsable_certification_rs": "tache_certification_rs",
-}
-
-# Libellés lisibles pour l'interface en ligne de commande
-LIBELLES: Dict[str, str] = {
-    "responsable_marketing": "Responsable Marketing",
-    "responsable_marches_publics": "Responsable Marchés Publics",
-    "responsable_commercial": "Responsable Commercial",
-    "assistante_direction": "Assistant·e de Direction",
-    "responsable_administratif": "Responsable Administratif & Financier",
-    "responsable_certification_rs": "Responsable Certification & RSE (RS)",
-}
-
-
-def _load_yaml(nom_fichier: str) -> dict:
-    """Charge un fichier YAML du dossier de configuration."""
-    chemin = CONFIG_DIR / nom_fichier
-    with chemin.open("r", encoding="utf-8") as flux:
-        return yaml.safe_load(flux)
+from agentia.config_loader import (
+    AGENT_TO_TASK,
+    LIBELLES,
+    charger_agents,
+    charger_taches,
+    router,
+)
 
 
 class AgentiaCrew:
@@ -54,8 +32,8 @@ class AgentiaCrew:
         # Le modèle LLM peut être surchargé par variable d'environnement.
         self.modele = modele or os.getenv("AGENTIA_MODEL", "gpt-4o-mini")
         self.verbose = verbose
-        self.config_agents = _load_yaml("agents.yaml")
-        self.config_taches = _load_yaml("tasks.yaml")
+        self.config_agents = charger_agents()
+        self.config_taches = charger_taches()
         self._agents: Dict[str, Agent] = {}
         self._construire_agents()
 
@@ -88,6 +66,10 @@ class AgentiaCrew:
             )
         return self._agents[cle]
 
+    def choisir_agent(self, demande: str) -> str:
+        """Sélectionne automatiquement l'agent le plus pertinent."""
+        return router(demande)
+
     def _construire_tache(self, cle_agent: str, variables: dict) -> Task:
         cle_tache = AGENT_TO_TASK[cle_agent]
         conf = self.config_taches[cle_tache]
@@ -117,6 +99,20 @@ class AgentiaCrew:
             verbose=self.verbose,
         )
         return str(crew.kickoff())
+
+    def executer_auto(
+        self,
+        sujet: str,
+        contexte: str = "Aucun contexte particulier.",
+        objectif: str = "Produire un livrable professionnel et exploitable.",
+    ) -> tuple[str, str]:
+        """Choisit l'agent automatiquement puis traite la demande.
+
+        Retourne un tuple (clé_agent_choisi, résultat).
+        """
+        cle_agent = self.choisir_agent(sujet)
+        resultat = self.executer_agent(cle_agent, sujet, contexte, objectif)
+        return cle_agent, resultat
 
     def executer_equipe(
         self,

@@ -39,14 +39,15 @@ agents = crew.agents_disponibles()
 
 mode = st.radio(
     "Mode de traitement",
-    ["Un agent", "Toute l'équipe"],
+    ["Automatique 🪄", "Un agent", "Toute l'équipe"],
     horizontal=True,
+    help="« Automatique » choisit pour vous le responsable le plus adapté.",
 )
 
 cle_agent = None
 if mode == "Un agent":
     libelle = st.selectbox("Choisissez l'agent", list(agents.values()))
-    cle_agent = next(c for c, l in agents.items() if l == libelle)
+    cle_agent = next(c for c, lib in agents.items() if lib == libelle)
 
 sujet = st.text_area("Sujet / demande", placeholder="Décrivez votre besoin…")
 contexte = st.text_area("Contexte (optionnel)", value="")
@@ -62,6 +63,9 @@ if st.button("🚀 Lancer", type="primary"):
             try:
                 if mode == "Toute l'équipe":
                     resultat = crew.executer_equipe(sujet, ctx, obj)
+                elif mode == "Automatique 🪄":
+                    choisi, resultat = crew.executer_auto(sujet, ctx, obj)
+                    st.info(f"🤖 Agent choisi : **{agents.get(choisi, choisi)}**")
                 else:
                     resultat = crew.executer_agent(cle_agent, sujet, ctx, obj)
                 st.markdown("### Résultat")

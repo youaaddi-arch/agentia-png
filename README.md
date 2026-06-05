@@ -15,22 +15,55 @@ métier et produit des livrables professionnels en français.
 | `responsable_administratif` | Responsable Administratif & Financier — facturation, conformité, reporting |
 | `responsable_certification_rs` | Responsable Certification & RSE (RS) — Qualiopi, ISO, audits, RSE |
 
-## 📦 Installation
+> 🪄 **Mode automatique** : vous n'êtes pas obligé de choisir l'agent. Décrivez
+> simplement votre besoin et la plateforme sélectionne le bon responsable.
+
+---
+
+## 🚀 Démarrage ultra-simple (débutant)
+
+### Étape 1 — Obtenir une clé API
+
+Les agents ont besoin d'un « cerveau » (un modèle d'IA). Le plus simple :
+créez une clé sur **https://platform.openai.com/api-keys** (compte OpenAI).
+Elle ressemble à `sk-...`. Gardez-la, on va la coller à l'étape 3.
+
+### Étape 2 — Lancer la plateforme
+
+Sur Mac ou Linux, dans un terminal, placez-vous dans le dossier du projet puis :
 
 ```bash
-# 1. Cloner puis créer un environnement virtuel
-python -m venv .venv
-source .venv/bin/activate
-
-# 2. Installer les dépendances
-pip install -r requirements.txt
-
-# 3. Configurer la clé API
-cp .env.example .env
-# puis éditez .env et renseignez OPENAI_API_KEY (ou un autre fournisseur)
+./run.sh
 ```
 
-## 🚀 Utilisation
+Ce script fait **tout** pour vous : il installe ce qu'il faut et ouvre
+l'interface web dans votre navigateur. (La première fois peut prendre quelques
+minutes.)
+
+### Étape 3 — Coller votre clé
+
+Au premier lancement, un fichier `.env` est créé. Ouvrez-le, et remplacez
+`sk-...` par votre vraie clé :
+
+```
+OPENAI_API_KEY=sk-votre-cle-ici
+```
+
+Relancez `./run.sh` — c'est prêt ! Décrivez votre besoin et cliquez sur
+**Lancer**.
+
+---
+
+## 🧑‍💻 Utilisation avancée
+
+### Installation manuelle
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # puis renseignez votre clé dans .env
+```
 
 ### En ligne de commande
 
@@ -38,9 +71,11 @@ cp .env.example .env
 # Lister les agents
 python -m agentia.main --liste
 
-# Solliciter un agent précis
-python -m agentia.main \
-  --agent responsable_marketing \
+# Mode AUTO : la plateforme choisit le bon responsable
+python -m agentia.main --sujet "Rédige un courrier de relance pour un client"
+
+# Forcer un agent précis
+python -m agentia.main --agent responsable_marketing \
   --sujet "Lancement d'une nouvelle offre SaaS" \
   --contexte "Cible PME, budget 20k€" \
   --objectif "Générer 100 leads qualifiés en 3 mois"
@@ -49,19 +84,17 @@ python -m agentia.main \
 python -m agentia.main --equipe \
   --sujet "Réponse à un marché public de formation Qualiopi"
 
-# Mode interactif (sans argument)
+# Mode interactif (sans argument) : on vous pose les questions
 python -m agentia.main
 ```
 
-> Astuce : exécutez les commandes depuis le dossier `src/`, ou installez le
-> paquet en mode édition avec `pip install -e .` pour exposer la commande
-> `agentia` et résoudre les imports.
-
-### Interface web (optionnelle)
+### Interface web
 
 ```bash
 streamlit run app.py
 ```
+
+---
 
 ## 🔧 Configuration
 
@@ -77,23 +110,38 @@ correspondante et le modèle, par ex. `AGENTIA_MODEL=anthropic/claude-sonnet-4-6
 
 ```
 agentia-png/
+├── run.sh                       # Lanceur tout-en-un
 ├── app.py                       # Interface web Streamlit
-├── pyproject.toml               # Packaging
+├── pyproject.toml               # Packaging + config tests/lint
 ├── requirements.txt
 ├── .env.example
+├── .github/workflows/ci.yml     # Intégration continue (lint + tests)
+├── tests/                       # Tests automatiques (sans clé API)
 └── src/agentia/
     ├── main.py                  # CLI
     ├── crew.py                  # Construction des agents/tâches CrewAI
+    ├── config_loader.py         # Chargement config + routage automatique
     ├── config/
     │   ├── agents.yaml          # Définition des 6 agents
     │   └── tasks.yaml           # Tâches par défaut par agent
     └── tools/                   # Outils personnalisés (extensible)
 ```
 
+## ✅ Qualité
+
+```bash
+ruff check src tests app.py   # lint
+pytest -q                     # tests (ne nécessitent pas de clé API)
+```
+
+La CI GitHub exécute automatiquement ces vérifications sur chaque push.
+
 ## 🧩 Personnalisation
 
 - **Modifier un agent** : éditez `src/agentia/config/agents.yaml`.
 - **Modifier une tâche** : éditez `src/agentia/config/tasks.yaml`.
+- **Ajuster le routage automatique** : éditez les mots-clés dans
+  `src/agentia/config_loader.py`.
 - **Ajouter un outil** (recherche web, accès CRM, veille marchés publics…) :
   créez-le dans `src/agentia/tools/` puis rattachez-le aux agents dans
   `crew.py`.
