@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from agentia.config_loader import (  # noqa: E402
     AGENT_TO_TASK,
     LIBELLES,
+    PRESENTATION,
     charger_agents,
     charger_taches,
     router,
@@ -39,6 +40,14 @@ def test_six_taches_definies():
 
 def test_libelles_complets():
     assert set(LIBELLES) == AGENTS_ATTENDUS
+
+
+def test_presentation_complete():
+    # Chaque agent a une icône et une accroche pour les cartes de l'accueil.
+    assert set(PRESENTATION) == AGENTS_ATTENDUS
+    for cle, infos in PRESENTATION.items():
+        assert infos.get("icone"), f"icône manquante : {cle}"
+        assert infos.get("accroche"), f"accroche manquante : {cle}"
 
 
 def test_configuration_valide():

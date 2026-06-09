@@ -25,7 +25,7 @@ pip install --quiet -r requirements.txt
 # 3. Fichier .env
 if [ ! -f ".env" ]; then
   cp .env.example .env
-  echo "⚠️  Fichier .env créé. Ouvrez-le et renseignez votre clé API (OPENAI_API_KEY)."
+  echo "⚠️  Fichier .env créé. Ouvrez-le et renseignez votre clé API (ANTHROPIC_API_KEY)."
 fi
 
 # 4. Lancement

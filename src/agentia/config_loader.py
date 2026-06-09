@@ -34,6 +34,34 @@ LIBELLES: Dict[str, str] = {
     "responsable_certification_rs": "Responsable Certification & RSE (RS)",
 }
 
+# Présentation visuelle de chaque agent (icône + accroche) pour l'interface.
+PRESENTATION: Dict[str, dict] = {
+    "responsable_marketing": {
+        "icone": "📣",
+        "accroche": "Stratégie, campagnes multicanal, contenus & notoriété.",
+    },
+    "responsable_marches_publics": {
+        "icone": "📑",
+        "accroche": "Appels d'offres, mémoires techniques & conformité.",
+    },
+    "responsable_commercial": {
+        "icone": "💼",
+        "accroche": "Prospection, négociation & propositions commerciales.",
+    },
+    "assistante_direction": {
+        "icone": "🗂️",
+        "accroche": "Courriers, comptes rendus, agendas & organisation.",
+    },
+    "responsable_administratif": {
+        "icone": "📊",
+        "accroche": "Facturation, finances, RH & conformité.",
+    },
+    "responsable_certification_rs": {
+        "icone": "✅",
+        "accroche": "Qualiopi, ISO, audits & responsabilité sociétale.",
+    },
+}
+
 # Mots-clés permettant de router automatiquement une demande vers un agent.
 # Le routage choisit l'agent dont les mots-clés apparaissent le plus dans la
 # demande. C'est volontairement simple et déterministe (aucun appel LLM).
