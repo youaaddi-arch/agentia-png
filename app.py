@@ -23,7 +23,11 @@ try:
 except ImportError:
     pass
 
-from agentia.config_loader import PRESENTATION
+from agentia.config_loader import (
+    LIBELLES,
+    PRESENTATION,
+    organigramme,
+)
 from agentia.engine import AgentiaPlatform
 
 st.set_page_config(
@@ -113,35 +117,71 @@ st.markdown(
     <div class="hero">
       <span class="eyebrow">Paris Nord Groupe · Plateforme d'agents IA</span>
       <h1>Agentia</h1>
-      <p class="sub">Votre direction augmentée par l'IA. Six responsables virtuels
-      prêts à rédiger, analyser et produire vos livrables professionnels —
-      en français, en quelques secondes.</p>
+      <p class="sub">Votre direction augmentée par l'IA. Un CEO, six responsables
+      et leurs spécialistes, prêts à rédiger, analyser et produire vos livrables
+      professionnels — en français, en quelques secondes.</p>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 # ---------------------------------------------------------------------------
-# Cartes des agents
+# Organigramme cliquable (CEO -> responsables -> spécialistes)
 # ---------------------------------------------------------------------------
+if "agent_selectionne" not in st.session_state:
+    st.session_state.agent_selectionne = None
+
 st.markdown(
-    '<div class="section-title">👥 Votre équipe</div>'
-    '<div class="section-sub">Chaque agent est spécialisé dans un métier. '
-    'La plateforme choisit automatiquement le bon, ou vous le sélectionnez.</div>',
+    '<div class="section-title">👥 Votre équipe (organigramme)</div>'
+    '<div class="section-sub">Cliquez sur un agent pour qu\'il traite votre '
+    'demande — ou laissez le mode automatique choisir pour vous.</div>',
     unsafe_allow_html=True,
 )
 
-cartes = "".join(
-    f"""
-    <div class="agent-card">
-      <div class="icon">{PRESENTATION.get(cle, {}).get('icone', '🤖')}</div>
-      <div class="name">{libelle}</div>
-      <div class="desc">{PRESENTATION.get(cle, {}).get('accroche', '')}</div>
-    </div>
-    """
-    for cle, libelle in agents.items()
+
+def bouton_agent(cle: str) -> None:
+    """Affiche un agent sous forme de bouton cliquable qui le sélectionne."""
+    pres = PRESENTATION.get(cle, {})
+    libelle = LIBELLES.get(cle, cle)
+    actif = st.session_state.agent_selectionne == cle
+    if st.button(
+        f"{pres.get('icone', '🤖')}  {libelle}",
+        key=f"org_{cle}",
+        use_container_width=True,
+        help=pres.get("accroche", ""),
+        type="primary" if actif else "secondary",
+    ):
+        st.session_state.agent_selectionne = cle
+        st.rerun()
+
+
+org = organigramme()
+
+# Niveau 1 — CEO (centré)
+col_g, col_c, col_d = st.columns([1, 1.4, 1])
+with col_c:
+    bouton_agent(org["ceo"])
+
+st.markdown(
+    '<div style="text-align:center;color:#5b6075;font-size:.85rem;'
+    'margin:2px 0 10px;">▼ délègue à ses responsables ▼</div>',
+    unsafe_allow_html=True,
 )
-st.markdown(f'<div class="agent-grid">{cartes}</div>', unsafe_allow_html=True)
+
+# Niveaux 2 & 3 — chaque responsable et sa sous-équipe, par colonnes de 3
+equipes = org["equipes"]
+for debut in range(0, len(equipes), 3):
+    colonnes = st.columns(3)
+    for colonne, equipe in zip(colonnes, equipes[debut : debut + 3]):
+        with colonne, st.container(border=True):
+            bouton_agent(equipe["responsable"])
+            st.markdown(
+                '<div style="color:#5b6075;font-size:.72rem;'
+                'margin:2px 0 4px 4px;">Sous-équipe :</div>',
+                unsafe_allow_html=True,
+            )
+            for specialiste in equipe["specialistes"]:
+                bouton_agent(specialiste)
 
 # ---------------------------------------------------------------------------
 # Comment ça marche
@@ -164,17 +204,32 @@ st.markdown(
 st.markdown('<div class="section-title">📝 Lancer une demande</div>', unsafe_allow_html=True)
 
 with st.container(border=True):
-    mode = st.radio(
-        "Mode de traitement",
-        ["Automatique 🪄", "Un agent", "Toute l'équipe"],
-        horizontal=True,
-        help="« Automatique » choisit pour vous le responsable le plus adapté.",
-    )
-
+    agent_clique = st.session_state.agent_selectionne
     cle_agent = None
-    if mode == "Un agent":
-        libelle = st.selectbox("Choisissez l'agent", list(agents.values()))
-        cle_agent = next(c for c, lib in agents.items() if lib == libelle)
+
+    if agent_clique:
+        # Un agent a été choisi en cliquant dans l'organigramme.
+        pres = PRESENTATION.get(agent_clique, {})
+        st.success(
+            f"Agent sélectionné : {pres.get('icone', '🤖')} "
+            f"**{LIBELLES.get(agent_clique, agent_clique)}** — il traitera votre demande."
+        )
+        if st.button("✖ Désélectionner (revenir au mode automatique)"):
+            st.session_state.agent_selectionne = None
+            st.rerun()
+        mode = "Un agent"
+        cle_agent = agent_clique
+    else:
+        mode = st.radio(
+            "Mode de traitement",
+            ["Automatique 🪄", "Un agent", "Toute l'équipe"],
+            horizontal=True,
+            help="« Automatique » choisit pour vous le responsable le plus adapté. "
+            "Astuce : cliquez sur un agent dans l'organigramme ci-dessus.",
+        )
+        if mode == "Un agent":
+            libelle = st.selectbox("Choisissez l'agent", list(agents.values()))
+            cle_agent = next(c for c, lib in agents.items() if lib == libelle)
 
     sujet = st.text_area(
         "Votre demande",
@@ -227,9 +282,18 @@ with st.sidebar:
     st.markdown("### 🤖 Agentia")
     st.caption("Plateforme d'agents IA — LangChain + LangGraph")
     st.divider()
-    st.markdown("**Vos agents**")
-    for cle, libelle in agents.items():
-        st.markdown(f"{PRESENTATION.get(cle, {}).get('icone', '🤖')}  {libelle}")
+    st.markdown("**Votre équipe**")
+
+    def _ligne(cle: str, decalage: bool = False) -> str:
+        marge = "&nbsp;&nbsp;&nbsp;&nbsp;↳ " if decalage else ""
+        icone = PRESENTATION.get(cle, {}).get("icone", "🤖")
+        return f"{marge}{icone} {LIBELLES.get(cle, cle)}"
+
+    st.markdown(_ligne(org["ceo"]), unsafe_allow_html=True)
+    for equipe in org["equipes"]:
+        st.markdown(_ligne(equipe["responsable"]), unsafe_allow_html=True)
+        for specialiste in equipe["specialistes"]:
+            st.markdown(_ligne(specialiste, decalage=True), unsafe_allow_html=True)
     st.divider()
     st.caption(
         "Configurez votre clé API dans le fichier `.env` "

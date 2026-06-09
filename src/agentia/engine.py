@@ -26,6 +26,7 @@ from langgraph.graph import END, StateGraph
 from agentia.config_loader import (
     AGENT_TO_TASK,
     LIBELLES,
+    RESPONSABLES,
     charger_agents,
     charger_taches,
     router,
@@ -177,9 +178,13 @@ class AgentiaPlatform:
         contexte: str = "Aucun contexte particulier.",
         objectif: str = "Produire un livrable professionnel et exploitable.",
     ) -> str:
-        """Fait traiter la demande par chaque agent, puis assemble les livrables."""
+        """Fait traiter la demande par chaque responsable, puis assemble les livrables.
+
+        On ne mobilise que le niveau « responsable » (6 agents) : faire répondre
+        aussi tous les spécialistes multiplierait inutilement les appels au LLM.
+        """
         morceaux: list[str] = []
-        for cle in self.config_agents:
+        for cle in RESPONSABLES:
             sortie = self.executer_agent(cle, sujet, contexte, objectif)
             morceaux.append(f"## {LIBELLES.get(cle, cle)}\n\n{sortie}")
         return "\n\n---\n\n".join(morceaux)

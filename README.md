@@ -6,19 +6,40 @@ Plateforme d'**agents IA** pour la direction d'entreprise, construite avec
 rôle métier et produit des livrables professionnels en français. Un graphe
 LangGraph aiguille automatiquement la demande vers le bon responsable.
 
-## 👥 Les agents
+## 👥 Les agents (organigramme)
 
-| Clé | Rôle |
-|-----|------|
-| `responsable_marketing` | Responsable Marketing — stratégie, campagnes, contenus, KPI |
-| `responsable_marches_publics` | Responsable Marchés Publics — appels d'offres, mémoire technique, conformité |
-| `responsable_commercial` | Responsable Commercial — prospection, négociation, propositions |
-| `assistante_direction` | Assistant·e de Direction — courriers, comptes rendus, organisation |
-| `responsable_administratif` | Responsable Administratif & Financier — facturation, conformité, reporting |
-| `responsable_certification_rs` | Responsable Certification & RSE (RS) — Qualiopi, ISO, audits, RSE |
+L'équipe est organisée comme une vraie entreprise : un **CEO** au sommet, six
+**responsables**, et leurs **spécialistes** (sous-équipes).
+
+```
+👑 Directeur·rice Général·e (CEO)
+├── 📣 Responsable Marketing
+│     ├── 📱 Community Manager (réseaux sociaux)
+│     ├── 🌐 Webmaster & SEO (site, blog)
+│     └── 🎯 Expert Google Ads (SEA)
+├── 📑 Responsable Marchés Publics
+│     ├── 🔭 Veilleur d'appels d'offres (BOAMP/PLACE)
+│     ├── 📝 Rédacteur de mémoire technique
+│     └── 🗃️ Monteur de dossier administratif (DC1, DC2, DUME)
+├── 💼 Responsable Commercial
+│     ├── 🧲 Chargé·e de prospection
+│     └── 📄 Rédacteur de propositions commerciales
+├── 🗂️ Assistant·e de Direction
+│     ├── ✉️ Gestionnaire d'emails
+│     ├── 📁 Gestionnaire Drive & documents
+│     └── 🗒️ Rédacteur de comptes rendus
+├── 📊 Responsable Administratif & Financier
+│     ├── ⏰ Suivi des documents (échéances/validité)
+│     └── 💶 Facturation & trésorerie
+└── ✅ Responsable Certification & RSE
+      ├── 🔎 Préparateur d'audits (Qualiopi)
+      └── 📚 Rédacteur de procédures
+```
 
 > 🪄 **Mode automatique** : vous n'êtes pas obligé de choisir l'agent. Décrivez
-> simplement votre besoin et la plateforme sélectionne le bon responsable.
+> simplement votre besoin et la plateforme sélectionne le bon agent — du
+> responsable au spécialiste. Vous pouvez aussi **cliquer** sur un agent dans
+> l'organigramme de la page d'accueil.
 
 ---
 
@@ -131,7 +152,7 @@ agentia-png/
     ├── engine.py                # Moteur LangGraph (graphe d'agents)
     ├── config_loader.py         # Chargement config + routage automatique
     ├── config/
-    │   ├── agents.yaml          # Définition des 6 agents
+    │   ├── agents.yaml          # Définition des agents (CEO + responsables + spécialistes)
     │   └── tasks.yaml           # Tâches par défaut par agent
     └── tools/                   # Outils personnalisés (extensible)
 ```

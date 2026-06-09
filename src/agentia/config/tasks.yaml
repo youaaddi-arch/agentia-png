@@ -1,7 +1,37 @@
 # =====================================================================
 # Définition des tâches par défaut pour chaque agent.
 # Les variables {sujet}, {contexte}, {objectif} sont injectées au runtime.
+#
+# - Le CEO et les 6 responsables ont une tâche dédiée.
+# - Les spécialistes (sous-équipes) partagent « tache_generique » : leur rôle
+#   précis est porté par leur fiche (agents.yaml), la tâche reste générale.
 # =====================================================================
+
+tache_ceo:
+  description: >
+    En tant que Directeur·rice Général·e, traite la demande suivante au niveau
+    stratégique : "{sujet}".
+    Contexte fourni : {contexte}
+    Objectif visé : {objectif}
+    Inclure : lecture stratégique de la situation, priorités, arbitrages,
+    répartition des actions entre les responsables concernés et indicateurs de
+    réussite.
+  expected_output: >
+    Une note de direction en français (Markdown) : cap stratégique, priorités,
+    feuille de route et répartition des responsabilités entre les équipes.
+  agent: directeur_general
+
+tache_generique:
+  description: >
+    En tant que spécialiste de ton domaine, traite la demande suivante :
+    "{sujet}".
+    Contexte fourni : {contexte}
+    Objectif visé : {objectif}
+    Mobilise ton expertise précise pour produire un livrable directement
+    exploitable, sans généralités.
+  expected_output: >
+    Le livrable demandé en français (Markdown) : précis, structuré et prêt à
+    l'emploi.
 
 tache_marketing:
   description: >
