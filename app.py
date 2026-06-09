@@ -8,6 +8,7 @@ Lancement :
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -21,6 +22,16 @@ try:
 
     load_dotenv()
 except ImportError:
+    pass
+
+# Sur Streamlit Community Cloud, les clés sont saisies dans « Secrets ».
+# On les recopie dans les variables d'environnement pour que le moteur
+# (init_chat_model) les trouve, exactement comme le ferait un fichier .env.
+try:
+    for _cle in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AGENTIA_MODEL"):
+        if _cle in st.secrets and not os.getenv(_cle):
+            os.environ[_cle] = str(st.secrets[_cle])
+except Exception:  # noqa: BLE001 — aucun secret défini (ex. en local) : on ignore.
     pass
 
 from agentia.config_loader import (
