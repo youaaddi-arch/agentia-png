@@ -164,17 +164,14 @@ def bouton_agent(cle: str, grand: bool = False) -> None:
     couleur = COULEUR_AGENT.get(cle, "#FF5A4C")
     taille = 74 if grand else 54
     # Avatar « personnage » illustré, généré (et mis en cache) pour chaque rôle,
-    # posé sur la couleur de son équipe. Chaque rôle a un visage unique et stable.
+    # posé sur la couleur de son équipe. radius=50 -> avatar rond.
+    # On passe par st.image : Streamlit récupère l'image côté serveur, ce qui
+    # est plus fiable que de dépendre du navigateur pour la charger.
     url = (
         "https://api.dicebear.com/9.x/avataaars/png"
         f"?seed={cle}&size=120&radius=50&backgroundColor={couleur.lstrip('#')}"
     )
-    st.markdown(
-        f'<img class="avatar" src="{url}" alt="{libelle}" '
-        f'style="display:block;width:{taille}px;height:{taille}px;'
-        f'border-color:{couleur};">',
-        unsafe_allow_html=True,
-    )
+    st.image(url, width=taille)
     actif = st.session_state.agent_selectionne == cle
     if st.button(
         libelle,
