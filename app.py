@@ -106,6 +106,13 @@ st.markdown(
       .step {background:#14161d; border:1px solid #272a38; border-radius:12px; padding:14px 16px;}
       .step .n {color:#FF5A4C; font-weight:800; font-size:.8rem;}
       .step .t {color:#cfd3df; font-size:.9rem; margin-top:4px;}
+
+      /* ---- Avatars des agents ---- */
+      .avatar {
+        border-radius:50%; display:flex; align-items:center; justify-content:center;
+        margin:2px auto 6px; line-height:1; border:2px solid #FF5A4C;
+        box-shadow:0 6px 16px rgba(0,0,0,.35);
+      }
     </style>
     """,
     unsafe_allow_html=True,
@@ -150,13 +157,24 @@ st.markdown(
 )
 
 
-def bouton_agent(cle: str) -> None:
-    """Affiche un agent sous forme de bouton cliquable qui le sélectionne."""
+def bouton_agent(cle: str, grand: bool = False) -> None:
+    """Affiche l'avatar d'un agent + un bouton cliquable qui le sélectionne."""
     pres = PRESENTATION.get(cle, {})
     libelle = LIBELLES.get(cle, cle)
+    couleur = COULEUR_AGENT.get(cle, "#FF5A4C")
+    taille = 64 if grand else 46
+    police = 30 if grand else 22
+    # Avatar : pastille ronde colorée selon l'équipe, avec l'icône du rôle.
+    st.markdown(
+        f'<div class="avatar" style="width:{taille}px;height:{taille}px;'
+        f'font-size:{police}px;border-color:{couleur};'
+        f'background:radial-gradient(circle at 30% 25%,{couleur},#11131b);">'
+        f'{pres.get("icone", "🤖")}</div>',
+        unsafe_allow_html=True,
+    )
     actif = st.session_state.agent_selectionne == cle
     if st.button(
-        f"{pres.get('icone', '🤖')}  {libelle}",
+        libelle,
         key=f"org_{cle}",
         use_container_width=True,
         help=pres.get("accroche", ""),
@@ -168,10 +186,26 @@ def bouton_agent(cle: str) -> None:
 
 org = organigramme()
 
+# Une couleur par équipe (le responsable et ses spécialistes la partagent).
+COULEURS_EQUIPE: dict[str, str] = {
+    "responsable_marketing": "#FF5A4C",
+    "responsable_marches_publics": "#3B82F6",
+    "responsable_commercial": "#22C55E",
+    "assistante_direction": "#A855F7",
+    "responsable_administratif": "#14B8A6",
+    "responsable_certification_rs": "#F97316",
+}
+COULEUR_AGENT: dict[str, str] = {org["ceo"]: "#E8B500"}  # CEO en doré
+for _equipe in org["equipes"]:
+    _c = COULEURS_EQUIPE.get(_equipe["responsable"], "#FF5A4C")
+    COULEUR_AGENT[_equipe["responsable"]] = _c
+    for _spe in _equipe["specialistes"]:
+        COULEUR_AGENT[_spe] = _c
+
 # Niveau 1 — CEO (centré)
 col_g, col_c, col_d = st.columns([1, 1.4, 1])
 with col_c:
-    bouton_agent(org["ceo"])
+    bouton_agent(org["ceo"], grand=True)
 
 st.markdown(
     '<div style="text-align:center;color:#5b6075;font-size:.85rem;'
