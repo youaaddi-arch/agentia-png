@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import sys
+import urllib.request
 from pathlib import Path
 
 # Permet l'import du paquet ``agentia`` situé dans src/
@@ -157,21 +158,47 @@ st.markdown(
 )
 
 
+@st.cache_data(show_spinner=False, ttl=86400)
+def _avatar_png(url: str) -> bytes | None:
+    """Télécharge un avatar côté serveur (mis en cache 24 h).
+
+    Renvoie les octets de l'image, ou ``None`` si le téléchargement échoue
+    (l'appelant affiche alors une pastille de secours).
+    """
+    try:
+        requete = urllib.request.Request(url, headers={"User-Agent": "Agentia"})
+        with urllib.request.urlopen(requete, timeout=10) as reponse:
+            return reponse.read()
+    except Exception:  # noqa: BLE001 — réseau indisponible : on bascule en secours.
+        return None
+
+
 def bouton_agent(cle: str, grand: bool = False) -> None:
     """Affiche l'avatar (personnage) d'un agent + un bouton cliquable."""
     pres = PRESENTATION.get(cle, {})
     libelle = LIBELLES.get(cle, cle)
     couleur = COULEUR_AGENT.get(cle, "#FF5A4C")
     taille = 74 if grand else 54
-    # Avatar « personnage » illustré, généré (et mis en cache) pour chaque rôle,
-    # posé sur la couleur de son équipe. radius=50 -> avatar rond.
-    # On passe par st.image : Streamlit récupère l'image côté serveur, ce qui
-    # est plus fiable que de dépendre du navigateur pour la charger.
+    # Avatar « personnage » illustré, propre à chaque rôle, sur la couleur de
+    # son équipe (radius=50 -> rond). On télécharge l'image côté serveur
+    # (cf. _avatar_png) pour qu'elle soit servie par Streamlit : ça évite les
+    # blocages de chargement d'images externes par le navigateur.
     url = (
         "https://api.dicebear.com/9.x/avataaars/png"
         f"?seed={cle}&size=120&radius=50&backgroundColor={couleur.lstrip('#')}"
     )
-    st.image(url, width=taille)
+    image = _avatar_png(url)
+    if image is not None:
+        st.image(image, width=taille)
+    else:
+        # Sécurité : si le visage ne se charge pas, pastille avec l'icône.
+        st.markdown(
+            f'<div class="avatar" style="width:{taille}px;height:{taille}px;'
+            f'font-size:{int(taille * 0.45)}px;border-color:{couleur};'
+            f'background:radial-gradient(circle at 30% 25%,{couleur},#11131b);">'
+            f'{pres.get("icone", "🤖")}</div>',
+            unsafe_allow_html=True,
+        )
     actif = st.session_state.agent_selectionne == cle
     if st.button(
         libelle,
