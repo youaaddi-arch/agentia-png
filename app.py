@@ -158,18 +158,21 @@ st.markdown(
 
 
 def bouton_agent(cle: str, grand: bool = False) -> None:
-    """Affiche l'avatar d'un agent + un bouton cliquable qui le sélectionne."""
+    """Affiche l'avatar (personnage) d'un agent + un bouton cliquable."""
     pres = PRESENTATION.get(cle, {})
     libelle = LIBELLES.get(cle, cle)
     couleur = COULEUR_AGENT.get(cle, "#FF5A4C")
-    taille = 64 if grand else 46
-    police = 30 if grand else 22
-    # Avatar : pastille ronde colorée selon l'équipe, avec l'icône du rôle.
+    taille = 74 if grand else 54
+    # Avatar « personnage » illustré, généré (et mis en cache) pour chaque rôle,
+    # posé sur la couleur de son équipe. Chaque rôle a un visage unique et stable.
+    url = (
+        "https://api.dicebear.com/9.x/avataaars/png"
+        f"?seed={cle}&size=120&radius=50&backgroundColor={couleur.lstrip('#')}"
+    )
     st.markdown(
-        f'<div class="avatar" style="width:{taille}px;height:{taille}px;'
-        f'font-size:{police}px;border-color:{couleur};'
-        f'background:radial-gradient(circle at 30% 25%,{couleur},#11131b);">'
-        f'{pres.get("icone", "🤖")}</div>',
+        f'<img class="avatar" src="{url}" alt="{libelle}" '
+        f'style="display:block;width:{taille}px;height:{taille}px;'
+        f'border-color:{couleur};">',
         unsafe_allow_html=True,
     )
     actif = st.session_state.agent_selectionne == cle
