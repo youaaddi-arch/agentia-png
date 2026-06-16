@@ -11,6 +11,7 @@ from agentia.config_loader import (  # noqa: E402
     CEO,
     EQUIPES,
     LIBELLES,
+    NOMS,
     PRESENTATION,
     RESPONSABLES,
     SPECIALISTES,
@@ -64,6 +65,20 @@ def test_chaque_agent_a_une_tache():
 
 def test_libelles_complets():
     assert set(LIBELLES) == set(charger_agents())
+
+
+def test_noms_complets():
+    # Chaque membre (agent) a une identité (prénom + nom).
+    assert set(NOMS) == set(charger_agents())
+    for cle, nom in NOMS.items():
+        assert nom.strip(), f"nom manquant pour : {cle}"
+
+
+def test_avatars_presents():
+    # Un visage est enregistré dans la plateforme pour chaque membre.
+    base = Path(__file__).parent.parent / "assets" / "avatars"
+    for cle in charger_agents():
+        assert (base / f"{cle}.png").is_file(), f"avatar manquant : {cle}"
 
 
 def test_presentation_complete():

@@ -63,6 +63,32 @@ AGENT_TO_TASK: Dict[str, str] = {
     **{spe: "tache_generique" for spe in SPECIALISTES},
 }
 
+# Prénom + nom donnés à chaque rôle (identité de l'équipe).
+NOMS: Dict[str, str] = {
+    CEO: "Camille Laurent",
+    "responsable_marketing": "Léa Moreau",
+    "responsable_marches_publics": "Karim Benali",
+    "responsable_commercial": "Marc Lefebvre",
+    "assistante_direction": "Sarah Lemoine",
+    "responsable_administratif": "Philippe Durand",
+    "responsable_certification_rs": "Nathalie Simon",
+    "community_manager": "Tom Bernard",
+    "webmaster_seo": "Hugo Petit",
+    "expert_google_ads": "Inès Garcia",
+    "veilleur_appels_offres": "Sophie Renaud",
+    "redacteur_memoire_technique": "Julien Faure",
+    "monteur_dossier_ao": "Nadia Cherif",
+    "charge_prospection": "Chloé Dubois",
+    "redacteur_propositions": "Antoine Roy",
+    "gestionnaire_emails": "Emma Girard",
+    "gestionnaire_drive": "Lucas Martin",
+    "redacteur_comptes_rendus": "Manon Robert",
+    "suivi_documents": "Claire Fontaine",
+    "facturation_tresorerie": "Yanis Brun",
+    "preparateur_audits": "David Mercier",
+    "redacteur_procedures": "Aurélie Blanc",
+}
+
 # Libellés lisibles pour l'interface
 LIBELLES: Dict[str, str] = {
     CEO: "Directeur·rice Général·e (CEO)",

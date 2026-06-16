@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import os
 import sys
-import urllib.request
 from pathlib import Path
 
 # Permet l'import du paquet ``agentia`` situé dans src/
@@ -37,10 +36,13 @@ except Exception:  # noqa: BLE001 — aucun secret défini (ex. en local) : on i
 
 from agentia.config_loader import (
     LIBELLES,
+    NOMS,
     PRESENTATION,
     organigramme,
 )
 from agentia.engine import AgentiaPlatform
+
+AVATAR_DIR = Path(__file__).parent / "assets" / "avatars"
 
 st.set_page_config(
     page_title="Agentia PNG — Vos agents IA",
@@ -158,40 +160,18 @@ st.markdown(
 )
 
 
-@st.cache_data(show_spinner=False, ttl=86400)
-def _avatar_png(url: str) -> bytes | None:
-    """Télécharge un avatar côté serveur (mis en cache 24 h).
-
-    Renvoie les octets de l'image, ou ``None`` si le téléchargement échoue
-    (l'appelant affiche alors une pastille de secours).
-    """
-    try:
-        requete = urllib.request.Request(url, headers={"User-Agent": "Agentia"})
-        with urllib.request.urlopen(requete, timeout=10) as reponse:
-            return reponse.read()
-    except Exception:  # noqa: BLE001 — réseau indisponible : on bascule en secours.
-        return None
-
-
 def bouton_agent(cle: str, grand: bool = False) -> None:
-    """Affiche l'avatar (personnage) d'un agent + un bouton cliquable."""
+    """Affiche le visage + l'identité d'un membre + un bouton cliquable."""
     pres = PRESENTATION.get(cle, {})
-    libelle = LIBELLES.get(cle, cle)
+    nom = NOMS.get(cle, LIBELLES.get(cle, cle))
     couleur = COULEUR_AGENT.get(cle, "#FF5A4C")
-    taille = 74 if grand else 54
-    # Avatar « personnage » illustré, propre à chaque rôle, sur la couleur de
-    # son équipe (radius=50 -> rond). On télécharge l'image côté serveur
-    # (cf. _avatar_png) pour qu'elle soit servie par Streamlit : ça évite les
-    # blocages de chargement d'images externes par le navigateur.
-    url = (
-        "https://api.dicebear.com/9.x/avataaars/png"
-        f"?seed={cle}&size=120&radius=50&backgroundColor={couleur.lstrip('#')}"
-    )
-    image = _avatar_png(url)
-    if image is not None:
-        st.image(image, width=taille)
+    taille = 86 if grand else 60
+    # Visage enregistré dans la plateforme (assets/avatars/) : aucun appel
+    # internet, l'image s'affiche donc toujours. Pastille de secours sinon.
+    fichier = AVATAR_DIR / f"{cle}.png"
+    if fichier.is_file():
+        st.image(str(fichier), width=taille)
     else:
-        # Sécurité : si le visage ne se charge pas, pastille avec l'icône.
         st.markdown(
             f'<div class="avatar" style="width:{taille}px;height:{taille}px;'
             f'font-size:{int(taille * 0.45)}px;border-color:{couleur};'
@@ -199,12 +179,19 @@ def bouton_agent(cle: str, grand: bool = False) -> None:
             f'{pres.get("icone", "🤖")}</div>',
             unsafe_allow_html=True,
         )
+    # Le rôle, en petit, juste sous le visage.
+    st.markdown(
+        f'<div style="font-size:.72rem;color:{couleur};font-weight:700;'
+        f'margin:-2px 0 2px;">{pres.get("icone", "🤖")} {LIBELLES.get(cle, cle)}</div>',
+        unsafe_allow_html=True,
+    )
     actif = st.session_state.agent_selectionne == cle
+    # Le bouton porte le prénom/nom du membre.
     if st.button(
-        libelle,
+        nom,
         key=f"org_{cle}",
         use_container_width=True,
-        help=pres.get("accroche", ""),
+        help=f"{LIBELLES.get(cle, cle)} — {pres.get('accroche', '')}",
         type="primary" if actif else "secondary",
     ):
         st.session_state.agent_selectionne = cle
@@ -283,8 +270,9 @@ with st.container(border=True):
         # Un agent a été choisi en cliquant dans l'organigramme.
         pres = PRESENTATION.get(agent_clique, {})
         st.success(
-            f"Agent sélectionné : {pres.get('icone', '🤖')} "
-            f"**{LIBELLES.get(agent_clique, agent_clique)}** — il traitera votre demande."
+            f"Membre sélectionné : {pres.get('icone', '🤖')} "
+            f"**{NOMS.get(agent_clique, agent_clique)}** "
+            f"({LIBELLES.get(agent_clique, agent_clique)}) — il traitera votre demande."
         )
         if st.button("✖ Désélectionner (revenir au mode automatique)"):
             st.session_state.agent_selectionne = None
@@ -359,7 +347,7 @@ with st.sidebar:
     def _ligne(cle: str, decalage: bool = False) -> str:
         marge = "&nbsp;&nbsp;&nbsp;&nbsp;↳ " if decalage else ""
         icone = PRESENTATION.get(cle, {}).get("icone", "🤖")
-        return f"{marge}{icone} {LIBELLES.get(cle, cle)}"
+        return f"{marge}{icone} **{NOMS.get(cle, cle)}** — {LIBELLES.get(cle, cle)}"
 
     st.markdown(_ligne(org["ceo"]), unsafe_allow_html=True)
     for equipe in org["equipes"]:
