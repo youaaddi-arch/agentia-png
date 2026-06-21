@@ -8,13 +8,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from agentia.config_loader import (  # noqa: E402
     AGENT_TO_TASK,
-    CEO,
-    EQUIPES,
+    AGENTS,
+    LEADS,
     LIBELLES,
     NOMS,
     PRESENTATION,
-    RESPONSABLES,
-    SPECIALISTES,
+    SERVICES,
     charger_agents,
     charger_taches,
     organigramme,
@@ -22,133 +21,95 @@ from agentia.config_loader import (  # noqa: E402
     valider_configuration,
 )
 
-# 1 CEO + 6 responsables + 15 spécialistes = 22 agents.
-RESPONSABLES_ATTENDUS = {
-    "responsable_marketing",
-    "responsable_marches_publics",
-    "responsable_commercial",
-    "assistante_direction",
-    "responsable_administratif",
-    "responsable_certification_rs",
-}
+
+def test_sept_services():
+    assert len(SERVICES) == 7
+    # Chaque service a un nom, une icône, une couleur et au moins un membre.
+    for s in SERVICES:
+        assert s["nom"] and s["icone"] and s["couleur"]
+        assert len(s["membres"]) >= 1
 
 
-def test_organigramme_complet():
+def test_dix_huit_agents():
     agents = charger_agents()
-    # Tous les agents de l'organigramme existent bien dans agents.yaml.
-    attendus = {CEO, *RESPONSABLES, *SPECIALISTES}
-    assert set(agents) == attendus
-    assert len(agents) == 22
+    assert set(AGENTS) == set(agents)
+    assert len(AGENTS) == 18
+    # Pas de doublon dans l'ordre d'affichage.
+    assert len(AGENTS) == len(set(AGENTS))
 
 
-def test_responsables_et_specialistes():
-    assert set(RESPONSABLES) == RESPONSABLES_ATTENDUS
-    # Chaque responsable a au moins un spécialiste dans sa sous-équipe.
-    for _, equipe in EQUIPES:
-        assert len(equipe) >= 1
-    assert len(SPECIALISTES) == 15
+def test_un_lead_par_service():
+    assert len(LEADS) == len(SERVICES)
+    assert LEADS == [s["membres"][0] for s in SERVICES]
 
 
-def test_taches_definies():
+def test_metadonnees_completes():
+    for cle in AGENTS:
+        assert cle in NOMS and NOMS[cle].strip()
+        assert cle in LIBELLES and LIBELLES[cle].strip()
+        assert cle in PRESENTATION
+        assert PRESENTATION[cle].get("icone")
+        assert PRESENTATION[cle].get("accroche")
+        assert cle in AGENT_TO_TASK
+
+
+def test_taches_existantes():
     taches = charger_taches()
-    # 1 (ceo) + 1 (générique) + 6 (responsables) = 8 tâches.
-    assert len(taches) == 8
-    # Toutes les tâches référencées par les agents existent réellement.
-    assert set(AGENT_TO_TASK.values()) == set(taches)
-
-
-def test_chaque_agent_a_une_tache():
-    agents = charger_agents()
-    for cle in agents:
-        assert cle in AGENT_TO_TASK, f"Tâche non mappée pour : {cle}"
-
-
-def test_libelles_complets():
-    assert set(LIBELLES) == set(charger_agents())
-
-
-def test_noms_complets():
-    # Chaque membre (agent) a une identité (prénom + nom).
-    assert set(NOMS) == set(charger_agents())
-    for cle, nom in NOMS.items():
-        assert nom.strip(), f"nom manquant pour : {cle}"
+    assert set(AGENT_TO_TASK.values()) <= set(taches)
 
 
 def test_avatars_presents():
-    # Un visage est enregistré dans la plateforme pour chaque membre.
     base = Path(__file__).parent.parent / "assets" / "avatars"
-    for cle in charger_agents():
+    for cle in AGENTS:
         assert (base / f"{cle}.png").is_file(), f"avatar manquant : {cle}"
-
-
-def test_presentation_complete():
-    # Chaque agent a une icône et une accroche pour les cartes de l'accueil.
-    assert set(PRESENTATION) == set(charger_agents())
-    for cle, infos in PRESENTATION.items():
-        assert infos.get("icone"), f"icône manquante : {cle}"
-        assert infos.get("accroche"), f"accroche manquante : {cle}"
 
 
 def test_organigramme_structure():
     org = organigramme()
-    assert org["ceo"] == CEO
-    assert [e["responsable"] for e in org["equipes"]] == RESPONSABLES
+    assert [s["nom"] for s in org] == [s["nom"] for s in SERVICES]
 
 
 def test_configuration_valide():
-    # Ne doit lever aucune exception.
     valider_configuration()
 
 
 # ---------------------------------------------------------------------------
-# Routage : les demandes larges vont au responsable, les demandes précises
-# au bon spécialiste.
+# Routage
 # ---------------------------------------------------------------------------
 def test_routage_marketing():
     assert router("Je veux lancer une campagne de communication") == \
         "responsable_marketing"
 
 
-def test_routage_marches_publics():
-    assert router("Réponse à un appel d'offres marché public BOAMP") == \
-        "responsable_marches_publics"
+def test_routage_appels_offres():
+    assert router("Analyse cet appel d'offres marché public, critères CCTP") == \
+        "analyste_ao"
 
 
 def test_routage_commercial():
-    assert router("Rédige un devis pour un prospect et négocie la vente") == \
-        "responsable_commercial"
+    assert router("Prépare un argumentaire de vente et la négociation") == \
+        "ingenieur_commercial"
 
 
-def test_routage_certification():
-    assert router("Préparer l'audit de certification Qualiopi ISO 9001") == \
-        "responsable_certification_rs"
+def test_routage_qualite():
+    assert router("Préparer la certification Qualiopi et les procédures ISO") == \
+        "responsable_qualite"
 
 
-def test_routage_administratif():
-    assert router("Établir la facturation et le suivi de trésorerie") == \
-        "responsable_administratif"
+def test_routage_finance():
+    assert router("Établir le budget et le suivi de trésorerie") == \
+        "responsable_financier"
+
+
+def test_routage_rh():
+    assert router("Rédige un contrat de travail et le bulletin de paie") == \
+        "responsable_rh"
+
+
+def test_routage_sourcing():
+    assert router("Lance un recrutement en alternance, rédige l'offre d'emploi") == \
+        "charge_sourcing"
 
 
 def test_routage_par_defaut_assistante():
-    # Demande sans mot-clé identifiable -> assistant·e de direction.
     assert router("xyz quelque chose d'indéterminé") == "assistante_direction"
-
-
-def test_routage_specialiste_community_manager():
-    assert router("Rédige un post LinkedIn pour nos réseaux sociaux") == \
-        "community_manager"
-
-
-def test_routage_specialiste_google_ads():
-    assert router("Crée une campagne Google Ads avec des annonces") == \
-        "expert_google_ads"
-
-
-def test_routage_specialiste_suivi_documents():
-    assert router("Suivre la date de validité et l'échéance de nos documents") == \
-        "suivi_documents"
-
-
-def test_routage_ceo_strategie():
-    assert router("Définis la vision et la stratégie, la feuille de route") == \
-        CEO

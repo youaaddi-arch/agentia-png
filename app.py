@@ -35,7 +35,12 @@ try:
 except Exception:  # noqa: BLE001 — aucun secret défini (ex. en local) : on ignore.
     pass
 
+import json
+
+import streamlit.components.v1 as components
+
 from agentia.config_loader import (
+    COULEUR_AGENT,
     LIBELLES,
     NOMS,
     PRESENTATION,
@@ -138,6 +143,13 @@ st.markdown(
       @media (prefers-reduced-motion: reduce) {
         .avatar-anim {animation:none;}
       }
+
+      /* ---- Bandeau de service ---- */
+      .service-header {
+        color:#fff; font-weight:800; letter-spacing:.04em; font-size:1rem;
+        padding:9px 16px; border-radius:10px; margin:22px 0 12px;
+        box-shadow:0 4px 14px rgba(0,0,0,.3);
+      }
     </style>
     """,
     unsafe_allow_html=True,
@@ -160,9 +172,9 @@ st.markdown(
     <div class="hero">
       <span class="eyebrow">Paris Nord Groupe · Plateforme d'agents IA</span>
       <h1>Agentia</h1>
-      <p class="sub">Votre direction augmentée par l'IA. Un CEO, six responsables
-      et leurs spécialistes, prêts à rédiger, analyser et produire vos livrables
-      professionnels — en français, en quelques secondes.</p>
+      <p class="sub">Votre direction augmentée par l'IA. Sept services et leurs
+      agents spécialisés, prêts à rédiger, analyser et produire vos livrables
+      professionnels — et à vous les lire à voix haute, en français.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -237,47 +249,18 @@ def bouton_agent(cle: str, grand: bool = False) -> None:
 
 org = organigramme()
 
-# Une couleur par équipe (le responsable et ses spécialistes la partagent).
-COULEURS_EQUIPE: dict[str, str] = {
-    "responsable_marketing": "#FF5A4C",
-    "responsable_marches_publics": "#3B82F6",
-    "responsable_commercial": "#22C55E",
-    "assistante_direction": "#A855F7",
-    "responsable_administratif": "#14B8A6",
-    "responsable_certification_rs": "#F97316",
-}
-COULEUR_AGENT: dict[str, str] = {org["ceo"]: "#E8B500"}  # CEO en doré
-for _equipe in org["equipes"]:
-    _c = COULEURS_EQUIPE.get(_equipe["responsable"], "#FF5A4C")
-    COULEUR_AGENT[_equipe["responsable"]] = _c
-    for _spe in _equipe["specialistes"]:
-        COULEUR_AGENT[_spe] = _c
-
-# Niveau 1 — CEO (centré)
-col_g, col_c, col_d = st.columns([1, 1.4, 1])
-with col_c:
-    bouton_agent(org["ceo"], grand=True)
-
-st.markdown(
-    '<div style="text-align:center;color:#5b6075;font-size:.85rem;'
-    'margin:2px 0 10px;">▼ délègue à ses responsables ▼</div>',
-    unsafe_allow_html=True,
-)
-
-# Niveaux 2 & 3 — chaque responsable et sa sous-équipe, par colonnes de 3
-equipes = org["equipes"]
-for debut in range(0, len(equipes), 3):
-    colonnes = st.columns(3)
-    for colonne, equipe in zip(colonnes, equipes[debut : debut + 3]):
-        with colonne, st.container(border=True):
-            bouton_agent(equipe["responsable"])
-            st.markdown(
-                '<div style="color:#5b6075;font-size:.72rem;'
-                'margin:2px 0 4px 4px;">Sous-équipe :</div>',
-                unsafe_allow_html=True,
-            )
-            for specialiste in equipe["specialistes"]:
-                bouton_agent(specialiste)
+# Affichage par services : bandeau coloré du service, puis ses membres.
+for service in org:
+    st.markdown(
+        f'<div class="service-header" style="background:{service["couleur"]};">'
+        f'{service["icone"]} {service["nom"].upper()}</div>',
+        unsafe_allow_html=True,
+    )
+    membres = service["membres"]
+    colonnes = st.columns(max(len(membres), 1))
+    for colonne, cle in zip(colonnes, membres):
+        with colonne:
+            bouton_agent(cle)
 
 # ---------------------------------------------------------------------------
 # Comment ça marche
@@ -340,7 +323,52 @@ with st.container(border=True):
     with col2:
         objectif = st.text_input("Objectif (optionnel)", value="")
 
-    lancer = st.button("🚀 Lancer", type="primary", use_container_width=True)
+        lancer = st.button("🚀 Lancer", type="primary", use_container_width=True)
+
+
+def lecteur_vocal(texte: str, nom: str = "L'agent") -> None:
+    """Affiche un lecteur qui fait LIRE le résultat à voix haute.
+
+    Utilise la synthèse vocale intégrée au navigateur (Web Speech API) :
+    gratuit, sans clé API ni service externe. La voix française est choisie
+    automatiquement si elle est disponible.
+    """
+    contenu = json.dumps(texte[:6000])  # on borne pour les très longues réponses
+    titre = json.dumps(f"🔊 {nom} vous lit la réponse")
+    components.html(
+        f"""
+        <div style="font-family:sans-serif;">
+          <button id="play" style="background:#FF5A4C;color:#fff;border:none;
+            border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer;">
+            🔊 Écouter</button>
+          <button id="stop" style="background:#272a38;color:#fff;border:none;
+            border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer;
+            margin-left:6px;">⏹️ Stop</button>
+          <script>
+            const texte = {contenu};
+            function choisirVoix() {{
+              const vs = window.speechSynthesis.getVoices();
+              return vs.find(v => v.lang && v.lang.toLowerCase().startsWith('fr'));
+            }}
+            document.getElementById('play').onclick = function() {{
+              window.speechSynthesis.cancel();
+              const u = new SpeechSynthesisUtterance(texte);
+              u.lang = 'fr-FR';
+              const v = choisirVoix();
+              if (v) u.voice = v;
+              u.rate = 1.0;
+              window.speechSynthesis.speak(u);
+            }};
+            document.getElementById('stop').onclick = function() {{
+              window.speechSynthesis.cancel();
+            }};
+            void {titre};
+          </script>
+        </div>
+        """,
+        height=60,
+    )
+
 
 if lancer:
     if not sujet.strip():
@@ -350,15 +378,23 @@ if lancer:
         obj = objectif.strip() or "Produire un livrable professionnel et exploitable."
         with st.spinner("Vos agents travaillent…"):
             try:
+                nom_lecteur = "L'équipe"
                 if mode == "Toute l'équipe":
                     resultat = plateforme.executer_equipe(sujet, ctx, obj)
                 elif mode == "Automatique 🪄":
                     choisi, resultat = plateforme.executer_auto(sujet, ctx, obj)
-                    st.info(f"🤖 Agent choisi : **{agents.get(choisi, choisi)}**")
+                    nom_lecteur = NOMS.get(choisi, agents.get(choisi, choisi))
+                    st.info(
+                        f"🤖 Agent choisi : **{nom_lecteur}** "
+                        f"({agents.get(choisi, choisi)})"
+                    )
                 else:
                     resultat = plateforme.executer_agent(cle_agent, sujet, ctx, obj)
+                    nom_lecteur = NOMS.get(cle_agent, "L'agent")
                 st.markdown("### ✅ Résultat")
                 st.markdown(resultat)
+                # 🔊 Lecture vocale du résultat (voix du navigateur, gratuite).
+                lecteur_vocal(resultat, nom_lecteur)
                 st.download_button(
                     "💾 Télécharger le résultat (Markdown)",
                     data=resultat,
@@ -379,18 +415,16 @@ with st.sidebar:
     st.markdown("### 🤖 Agentia")
     st.caption("Plateforme d'agents IA — LangChain + LangGraph")
     st.divider()
-    st.markdown("**Votre équipe**")
-
-    def _ligne(cle: str, decalage: bool = False) -> str:
-        marge = "&nbsp;&nbsp;&nbsp;&nbsp;↳ " if decalage else ""
-        icone = PRESENTATION.get(cle, {}).get("icone", "🤖")
-        return f"{marge}{icone} **{NOMS.get(cle, cle)}** — {LIBELLES.get(cle, cle)}"
-
-    st.markdown(_ligne(org["ceo"]), unsafe_allow_html=True)
-    for equipe in org["equipes"]:
-        st.markdown(_ligne(equipe["responsable"]), unsafe_allow_html=True)
-        for specialiste in equipe["specialistes"]:
-            st.markdown(_ligne(specialiste, decalage=True), unsafe_allow_html=True)
+    st.markdown("**Votre équipe (7 services)**")
+    for service in org:
+        st.markdown(f"**{service['icone']} {service['nom']}**")
+        for cle in service["membres"]:
+            icone = PRESENTATION.get(cle, {}).get("icone", "🤖")
+            st.markdown(
+                f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {icone} **{NOMS.get(cle, cle)}** — "
+                f"{LIBELLES.get(cle, cle)}",
+                unsafe_allow_html=True,
+            )
     st.divider()
     st.caption(
         "Configurez votre clé API dans le fichier `.env` "

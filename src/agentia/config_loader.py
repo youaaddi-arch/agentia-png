@@ -3,6 +3,8 @@
 Ce module ne dépend PAS de LangChain : il ne fait que lire les fichiers YAML et
 exposer les constantes. Cela permet de le tester sans installer de LLM, et de
 router une demande vers le bon agent sans appeler d'API.
+
+L'équipe est organisée par SERVICES (7 services, 18 agents).
 """
 
 from __future__ import annotations
@@ -15,323 +17,244 @@ import yaml
 CONFIG_DIR = Path(__file__).parent / "config"
 
 # =====================================================================
-# Organigramme (hiérarchie de l'équipe, façon CrewAI)
-#   CEO -> Responsables -> Spécialistes
-# C'est la source de vérité de l'organisation : l'interface et les tests
-# en dérivent la liste des agents et leur niveau.
+# Organisation par services (source de vérité de l'équipe)
+# Chaque service : un identifiant, un nom, une icône, une couleur, et la
+# liste de ses membres (le 1er membre est le « lead » du service).
 # =====================================================================
-CEO: str = "directeur_general"
-
-# Chaque responsable et la liste de ses spécialistes (sous-équipe).
-EQUIPES: list[tuple[str, list[str]]] = [
-    ("responsable_marketing", [
-        "community_manager", "webmaster_seo", "expert_google_ads",
-    ]),
-    ("responsable_marches_publics", [
-        "veilleur_appels_offres", "redacteur_memoire_technique",
-        "monteur_dossier_ao",
-    ]),
-    ("responsable_commercial", [
-        "charge_prospection", "redacteur_propositions",
-    ]),
-    ("assistante_direction", [
-        "gestionnaire_emails", "gestionnaire_drive", "redacteur_comptes_rendus",
-    ]),
-    ("responsable_administratif", [
-        "suivi_documents", "facturation_tresorerie",
-    ]),
-    ("responsable_certification_rs", [
-        "preparateur_audits", "redacteur_procedures",
-    ]),
+SERVICES: list[dict] = [
+    {
+        "id": "direction",
+        "nom": "Direction Générale",
+        "icone": "👑",
+        "couleur": "#E8B500",
+        "membres": ["conseiller_strategie", "assistante_direction"],
+    },
+    {
+        "id": "rh",
+        "nom": "Ressources Humaines",
+        "icone": "👥",
+        "couleur": "#EC4899",
+        "membres": ["responsable_rh", "charge_sourcing"],
+    },
+    {
+        "id": "marketing",
+        "nom": "Marketing",
+        "icone": "📣",
+        "couleur": "#FF5A4C",
+        "membres": [
+            "responsable_marketing", "expert_google_ads",
+            "webmaster_seo", "community_manager",
+        ],
+    },
+    {
+        "id": "commercial",
+        "nom": "Commercial",
+        "icone": "💼",
+        "couleur": "#22C55E",
+        "membres": ["ingenieur_commercial", "charge_prospection"],
+    },
+    {
+        "id": "appels_offres",
+        "nom": "Appels d'Offres",
+        "icone": "🎯",
+        "couleur": "#3B82F6",
+        "membres": [
+            "veilleur_appels_offres", "analyste_ao",
+            "redacteur_memoire_technique", "gestionnaire_ao",
+        ],
+    },
+    {
+        "id": "administratif",
+        "nom": "Administratif & Financier",
+        "icone": "💶",
+        "couleur": "#14B8A6",
+        "membres": ["responsable_financier", "gestionnaire_comptable"],
+    },
+    {
+        "id": "qualite",
+        "nom": "Qualité & Certification",
+        "icone": "✅",
+        "couleur": "#F97316",
+        "membres": ["responsable_qualite", "auditeur_qualiopi"],
+    },
 ]
 
-# Listes pratiques dérivées de l'organigramme.
-RESPONSABLES: list[str] = [resp for resp, _ in EQUIPES]
-SPECIALISTES: list[str] = [spe for _, equipe in EQUIPES for spe in equipe]
+# Listes pratiques dérivées de l'organisation.
+AGENTS: list[str] = [m for s in SERVICES for m in s["membres"]]
+LEADS: list[str] = [s["membres"][0] for s in SERVICES]
+# Couleur de chaque agent = couleur de son service.
+COULEUR_AGENT: Dict[str, str] = {
+    m: s["couleur"] for s in SERVICES for m in s["membres"]
+}
+
+# Prénom de chaque membre.
+NOMS: Dict[str, str] = {
+    "conseiller_strategie": "Yousra",
+    "assistante_direction": "Aïcha",
+    "responsable_rh": "Chloé",
+    "charge_sourcing": "Sarah",
+    "responsable_marketing": "Karim",
+    "expert_google_ads": "Emma",
+    "webmaster_seo": "Hugo",
+    "community_manager": "Léa",
+    "ingenieur_commercial": "Yanis",
+    "charge_prospection": "Léo",
+    "veilleur_appels_offres": "Nadia",
+    "analyste_ao": "Mehdi",
+    "redacteur_memoire_technique": "Thomas",
+    "gestionnaire_ao": "Camille",
+    "responsable_financier": "Antoine",
+    "gestionnaire_comptable": "Fatima",
+    "responsable_qualite": "Aminata",
+    "auditeur_qualiopi": "Anas",
+}
+
+# Intitulé de poste (libellé lisible) de chaque membre.
+LIBELLES: Dict[str, str] = {
+    "conseiller_strategie": "Conseillère en Stratégie",
+    "assistante_direction": "Assistante de Direction",
+    "responsable_rh": "Responsable RH & Paie",
+    "charge_sourcing": "Chargée de Sourcing & Alternance",
+    "responsable_marketing": "Responsable Marketing",
+    "expert_google_ads": "Chargée de Publicité / Google Ads",
+    "webmaster_seo": "Gestionnaire de Site Web & SEO",
+    "community_manager": "Community Manager / Réseaux Sociaux",
+    "ingenieur_commercial": "Ingénieur Commercial / Négociation",
+    "charge_prospection": "Chargé de Prospection & Devis",
+    "veilleur_appels_offres": "Chargée de Veille Appels d'Offres",
+    "analyste_ao": "Analyste Appels d'Offres",
+    "redacteur_memoire_technique": "Rédacteur Mémoire Technique",
+    "gestionnaire_ao": "Gestionnaire Administratif Appels d'Offres",
+    "responsable_financier": "Responsable Financier / Contrôleur de Gestion",
+    "gestionnaire_comptable": "Gestionnaire Comptable & Administrative",
+    "responsable_qualite": "Responsable Qualité & RSE",
+    "auditeur_qualiopi": "Auditeur Interne & Référent Qualiopi",
+}
 
 # Correspondance agent -> tâche par défaut (définie dans tasks.yaml).
-# Le CEO et les responsables ont une tâche dédiée ; les spécialistes
-# partagent « tache_generique ».
+# Les profils « transverses » utilisent une tâche dédiée ; les autres la
+# tâche générique (leur expertise est portée par leur fiche dans agents.yaml).
 AGENT_TO_TASK: Dict[str, str] = {
-    CEO: "tache_ceo",
-    "responsable_marketing": "tache_marketing",
-    "responsable_marches_publics": "tache_marches_publics",
-    "responsable_commercial": "tache_commercial",
+    "conseiller_strategie": "tache_ceo",
     "assistante_direction": "tache_assistance_direction",
-    "responsable_administratif": "tache_administrative",
-    "responsable_certification_rs": "tache_certification_rs",
-    **{spe: "tache_generique" for spe in SPECIALISTES},
+    "responsable_marketing": "tache_marketing",
+    "ingenieur_commercial": "tache_commercial",
+    "analyste_ao": "tache_marches_publics",
+    "responsable_financier": "tache_administrative",
+    "responsable_qualite": "tache_certification_rs",
 }
+# Tous les autres agents -> tâche générique.
+for _cle in AGENTS:
+    AGENT_TO_TASK.setdefault(_cle, "tache_generique")
 
-# Prénom + nom donnés à chaque rôle : des noms « clin d'œil » au métier.
-NOMS: Dict[str, str] = {
-    CEO: "Yousra Stratégie",
-    "responsable_marketing": "Karim Marketing",
-    "responsable_marches_publics": "Mehdi Public",
-    "responsable_commercial": "Yanis Vente",
-    "assistante_direction": "Aïcha Agenda",
-    "responsable_administratif": "Antoine Finance",
-    "responsable_certification_rs": "Aminata Qualité",
-    "community_manager": "Léa Réseaux",
-    "webmaster_seo": "Hugo Référencement",
-    "expert_google_ads": "Emma Pub",
-    "veilleur_appels_offres": "Nadia Veille",
-    "redacteur_memoire_technique": "Thomas Technique",
-    "monteur_dossier_ao": "Camille Dossier",
-    "charge_prospection": "Léo Prospect",
-    "redacteur_propositions": "Lucas Devis",
-    "gestionnaire_emails": "Manon Mail",
-    "gestionnaire_drive": "Mei Cloud",
-    "redacteur_comptes_rendus": "Diego Rapport",
-    "suivi_documents": "Inès Validité",
-    "facturation_tresorerie": "Fatima Facture",
-    "preparateur_audits": "Anas Audit",
-    "redacteur_procedures": "Sophie Procédure",
-}
-
-# Libellés lisibles pour l'interface
-LIBELLES: Dict[str, str] = {
-    CEO: "Directeur·rice Général·e (CEO)",
-    "responsable_marketing": "Responsable Marketing",
-    "responsable_marches_publics": "Responsable Marchés Publics",
-    "responsable_commercial": "Responsable Commercial",
-    "assistante_direction": "Assistant·e de Direction",
-    "responsable_administratif": "Responsable Administratif & Financier",
-    "responsable_certification_rs": "Responsable Certification & RSE (RS)",
-    # Spécialistes
-    "community_manager": "Community Manager",
-    "webmaster_seo": "Webmaster & SEO",
-    "expert_google_ads": "Expert Google Ads (SEA)",
-    "veilleur_appels_offres": "Veilleur d'appels d'offres",
-    "redacteur_memoire_technique": "Rédacteur mémoire technique",
-    "monteur_dossier_ao": "Monteur de dossier administratif",
-    "charge_prospection": "Chargé·e de prospection",
-    "redacteur_propositions": "Rédacteur propositions commerciales",
-    "gestionnaire_emails": "Gestionnaire d'emails",
-    "gestionnaire_drive": "Gestionnaire Drive & documents",
-    "redacteur_comptes_rendus": "Rédacteur de comptes rendus",
-    "suivi_documents": "Suivi des documents (échéances)",
-    "facturation_tresorerie": "Facturation & trésorerie",
-    "preparateur_audits": "Préparateur d'audits (Qualiopi)",
-    "redacteur_procedures": "Rédacteur de procédures",
-}
-
-# Présentation visuelle de chaque agent (icône + accroche) pour l'interface.
+# Icône + accroche de chaque membre (pour les cartes de l'interface).
 PRESENTATION: Dict[str, dict] = {
-    "responsable_marketing": {
-        "icone": "📣",
-        "accroche": "Stratégie, campagnes multicanal, contenus & notoriété.",
-    },
-    "responsable_marches_publics": {
-        "icone": "📑",
-        "accroche": "Appels d'offres, mémoires techniques & conformité.",
-    },
-    "responsable_commercial": {
-        "icone": "💼",
-        "accroche": "Prospection, négociation & propositions commerciales.",
-    },
-    "assistante_direction": {
-        "icone": "🗂️",
-        "accroche": "Courriers, comptes rendus, agendas & organisation.",
-    },
-    "responsable_administratif": {
-        "icone": "📊",
-        "accroche": "Facturation, finances, RH & conformité.",
-    },
-    "responsable_certification_rs": {
-        "icone": "✅",
-        "accroche": "Qualiopi, ISO, audits & responsabilité sociétale.",
-    },
-    # ---- Direction ----
-    CEO: {
-        "icone": "👑",
-        "accroche": "Vision, stratégie, arbitrages & coordination de l'équipe.",
-    },
-    # ---- Spécialistes Marketing ----
-    "community_manager": {
-        "icone": "📱",
-        "accroche": "Réseaux sociaux : LinkedIn, Facebook, Instagram, TikTok.",
-    },
-    "webmaster_seo": {
-        "icone": "🌐",
-        "accroche": "Site internet, blog & référencement Google (SEO).",
-    },
-    "expert_google_ads": {
-        "icone": "🎯",
-        "accroche": "Campagnes Google Ads & publicité payante (SEA).",
-    },
-    # ---- Spécialistes Marchés Publics ----
-    "veilleur_appels_offres": {
-        "icone": "🔭",
-        "accroche": "Veille BOAMP/PLACE & repérage des opportunités.",
-    },
-    "redacteur_memoire_technique": {
-        "icone": "📝",
-        "accroche": "Rédaction de mémoires techniques gagnants.",
-    },
-    "monteur_dossier_ao": {
-        "icone": "🗃️",
-        "accroche": "Pièces administratives : DC1, DC2, DUME, DPGF.",
-    },
-    # ---- Spécialistes Commercial ----
-    "charge_prospection": {
-        "icone": "🧲",
-        "accroche": "Idées commerciales, cibles & prises de contact.",
-    },
-    "redacteur_propositions": {
-        "icone": "📄",
-        "accroche": "Propositions commerciales & devis convaincants.",
-    },
-    # ---- Spécialistes Assistance de Direction ----
-    "gestionnaire_emails": {
-        "icone": "✉️",
-        "accroche": "Tri, priorisation & rédaction d'emails.",
-    },
-    "gestionnaire_drive": {
-        "icone": "📁",
-        "accroche": "Classement & organisation des fichiers (Drive).",
-    },
-    "redacteur_comptes_rendus": {
-        "icone": "🗒️",
-        "accroche": "Comptes rendus, relevés de décisions & PV.",
-    },
-    # ---- Spécialistes Administratif & Financier ----
-    "suivi_documents": {
-        "icone": "⏰",
-        "accroche": "Dates de validité, échéances & alertes documentaires.",
-    },
-    "facturation_tresorerie": {
-        "icone": "💶",
-        "accroche": "Factures, relances d'impayés & trésorerie.",
-    },
-    # ---- Spécialistes Certification & RSE ----
-    "preparateur_audits": {
-        "icone": "🔎",
-        "accroche": "Préparation d'audits, audit blanc & écarts.",
-    },
-    "redacteur_procedures": {
-        "icone": "📚",
-        "accroche": "Procédures, modes opératoires & documentation qualité.",
-    },
+    "conseiller_strategie": {"icone": "👑", "accroche": "Vision, stratégie & arbitrages."},
+    "assistante_direction": {"icone": "🗂️", "accroche": "Courriers, comptes rendus & organisation."},
+    "responsable_rh": {"icone": "🧑‍💼", "accroche": "Contrats, paie & droit social."},
+    "charge_sourcing": {"icone": "📋", "accroche": "Recrutement, sourcing & alternance."},
+    "responsable_marketing": {"icone": "📣", "accroche": "Stratégie, campagnes & contenus."},
+    "expert_google_ads": {"icone": "🎯", "accroche": "Google Ads & publicité en ligne."},
+    "webmaster_seo": {"icone": "🌐", "accroche": "Site web, blog & référencement (SEO)."},
+    "community_manager": {"icone": "📱", "accroche": "Réseaux sociaux & community management."},
+    "ingenieur_commercial": {"icone": "💼", "accroche": "Vente, négociation & closing."},
+    "charge_prospection": {"icone": "🧲", "accroche": "Prospection & devis."},
+    "veilleur_appels_offres": {"icone": "🔭", "accroche": "Veille BOAMP/PLACE & opportunités."},
+    "analyste_ao": {"icone": "📑", "accroche": "Analyse des dossiers & critères."},
+    "redacteur_memoire_technique": {"icone": "📝", "accroche": "Mémoires techniques gagnants."},
+    "gestionnaire_ao": {"icone": "🗃️", "accroche": "Pièces administratives (DC1, DC2, DUME)."},
+    "responsable_financier": {"icone": "📊", "accroche": "Budget, trésorerie & contrôle de gestion."},
+    "gestionnaire_comptable": {"icone": "💶", "accroche": "Facturation, comptabilité & relances."},
+    "responsable_qualite": {"icone": "✅", "accroche": "Qualiopi, ISO & RSE."},
+    "auditeur_qualiopi": {"icone": "🔎", "accroche": "Audits internes & conformité Qualiopi."},
 }
 
-# Mots-clés permettant de router automatiquement une demande vers un agent.
-# Le routage choisit l'agent dont les mots-clés apparaissent le plus dans la
-# demande. C'est volontairement simple et déterministe (aucun appel LLM).
+# Mots-clés de routage automatique (comptage déterministe, sans appel LLM).
+# Le 1er membre d'un service (lead) est placé avant ses collègues : en cas
+# d'égalité de score, c'est lui qui est choisi.
 MOTS_CLES: Dict[str, list[str]] = {
-    "responsable_marketing": [
-        "marketing", "campagne", "communication", "publicité", "publicite",
-        "réseaux sociaux", "reseaux sociaux", "seo", "contenu", "marque",
-        "notoriété", "notoriete", "lead", "newsletter", "emailing", "site web",
-    ],
-    "responsable_marches_publics": [
-        "marché public", "marche public", "marchés publics", "marches publics",
-        "appel d'offre", "appel d'offres", "appel d offre", "boamp", "ccap",
-        "cctp", "dce", "dc1", "dc2", "dpgf", "mémoire technique",
-        "memoire technique", "consultation", "soumission", "candidature",
-    ],
-    "responsable_commercial": [
-        "commercial", "vente", "vendre", "prospection", "client", "prospect",
-        "devis", "négociation", "negociation", "offre commerciale", "crm",
-        "pipeline", "chiffre d'affaires", "ca", "closing", "argumentaire",
+    # --- Direction ---
+    "conseiller_strategie": [
+        "stratégie", "strategie", "vision", "arbitrage", "priorité", "priorite",
+        "feuille de route", "business plan", "pilotage", "cap", "objectifs",
     ],
     "assistante_direction": [
         "agenda", "réunion", "reunion", "compte rendu", "compte-rendu",
-        "courrier", "lettre", "ordre du jour", "rendez-vous", "rdv",
-        "organisation", "secrétariat", "secretariat", "note", "synthèse",
-        "synthese", "planning",
+        "courrier", "lettre", "ordre du jour", "note", "synthèse", "synthese",
+        "organisation", "planning", "secrétariat", "secretariat",
     ],
-    "responsable_administratif": [
-        "administratif", "facture", "facturation", "comptabilité",
-        "comptabilite", "trésorerie", "tresorerie", "contrat", "paie",
-        "rh", "budget", "dépense", "depense", "rgpd", "fiscal", "social",
-        "reporting", "tableau de bord",
+    # --- Ressources humaines ---
+    "responsable_rh": [
+        "rh", "ressources humaines", "paie", "salaire", "bulletin", "contrat de travail",
+        "embauche", "droit du travail", "congés", "conges", "personnel", "social rh",
     ],
-    "responsable_certification_rs": [
-        "certification", "qualiopi", "iso", "audit", "rse", "rs", "norme",
-        "qualité", "qualite", "référentiel", "referentiel", "conformité",
-        "conformite", "label", "26000", "9001", "14001", "45001",
-        "responsabilité sociétale", "responsabilite societale", "développement durable",
-        "developpement durable",
-    ],
-    # -----------------------------------------------------------------
-    # CEO + spécialistes : mots-clés PRÉCIS (placés après les responsables
-    # pour qu'un responsable gagne en cas d'égalité ; un spécialiste n'est
-    # choisi que lorsqu'une demande emploie son vocabulaire spécifique).
-    # -----------------------------------------------------------------
-    CEO: [
-        "stratégie", "strategie", "stratégique", "strategique", "vision",
-        "arbitrage", "priorité", "priorite", "feuille de route", "business plan",
-        "direction générale", "direction generale", "pilotage", "cap",
+    "charge_sourcing": [
+        "recrutement", "sourcing", "alternance", "apprentissage", "candidat",
+        "offre d'emploi", "cv", "entretien", "stage", "opco",
     ],
     # --- Marketing ---
-    "community_manager": [
-        "réseaux sociaux", "reseaux sociaux", "linkedin", "facebook",
-        "instagram", "tiktok", "post", "publication", "community manager",
-    ],
-    "webmaster_seo": [
-        "site internet", "blog", "référencement", "referencement",
-        "article de blog", "page web", "balise", "backlink",
+    "responsable_marketing": [
+        "marketing", "campagne", "communication", "marque", "notoriété",
+        "notoriete", "lead", "newsletter", "emailing", "contenu", "positionnement",
     ],
     "expert_google_ads": [
-        "google ads", "adwords", "sea", "sem", "campagne payante",
-        "publicité en ligne", "publicite en ligne", "annonce", "roas",
+        "google ads", "adwords", "sea", "sem", "campagne payante", "publicité",
+        "publicite", "annonce", "roas", "display",
     ],
-    # --- Marchés publics ---
-    "veilleur_appels_offres": [
-        "veille", "surveillance", "place", "profil acheteur",
-        "détection", "detection", "alerte marché", "alerte marche",
+    "webmaster_seo": [
+        "site internet", "site web", "blog", "seo", "référencement",
+        "referencement", "article de blog", "page web", "backlink",
     ],
-    "redacteur_memoire_technique": [
-        "note méthodologique", "note methodologique", "rédiger le mémoire",
-        "rediger le memoire", "trame de mémoire", "trame de memoire",
-    ],
-    "monteur_dossier_ao": [
-        "dume", "pièces administratives", "pieces administratives",
-        "attestation fiscale", "dossier de candidature", "kbis",
+    "community_manager": [
+        "réseaux sociaux", "reseaux sociaux", "linkedin", "facebook",
+        "instagram", "tiktok", "post", "publication", "community",
     ],
     # --- Commercial ---
+    "ingenieur_commercial": [
+        "commercial", "vente", "vendre", "négociation", "negociation",
+        "closing", "argumentaire", "offre commerciale", "client", "crm", "pipeline",
+    ],
     "charge_prospection": [
-        "prospection", "cold email", "prise de contact", "idée commerciale",
-        "idee commerciale", "nouveaux clients", "cibles", "fichier prospects",
+        "prospection", "prospect", "devis", "cold email", "prise de contact",
+        "lead", "nouveaux clients", "cibles",
     ],
-    "redacteur_propositions": [
-        "proposition commerciale", "offre commerciale", "plaquette",
-        "rédiger une offre", "rediger une offre", "devis commercial",
+    # --- Appels d'offres ---
+    "veilleur_appels_offres": [
+        "veille", "surveillance", "boamp", "place", "profil acheteur",
+        "détection", "detection", "opportunité marché", "opportunite marche",
     ],
-    # --- Assistance de direction ---
-    "gestionnaire_emails": [
-        "email", "e-mail", "mail", "boîte mail", "boite mail", "messagerie",
-        "répondre au mail", "repondre au mail", "tri des mails",
+    "analyste_ao": [
+        "appel d'offre", "appel d'offres", "marché public", "marche public",
+        "marchés publics", "marches publics", "ccap", "cctp", "rc", "consultation",
+        "critères d'attribution", "criteres d'attribution",
     ],
-    "gestionnaire_drive": [
-        "drive", "google drive", "classement", "arborescence",
-        "ranger les fichiers", "nommage", "dossier de fichiers",
+    "redacteur_memoire_technique": [
+        "mémoire technique", "memoire technique", "note méthodologique",
+        "note methodologique", "trame de mémoire", "trame de memoire",
     ],
-    "redacteur_comptes_rendus": [
-        "relevé de décisions", "releve de decisions", "procès-verbal",
-        "proces-verbal", "pv de réunion", "pv de reunion", "cr de réunion",
-        "cr de reunion",
+    "gestionnaire_ao": [
+        "dc1", "dc2", "dpgf", "dume", "pièces administratives",
+        "pieces administratives", "dossier de candidature", "attestation",
     ],
     # --- Administratif & financier ---
-    "suivi_documents": [
-        "date de validité", "date de validite", "échéance", "echeance",
-        "expiration", "renouvellement", "suivi documentaire", "alerte document",
+    "responsable_financier": [
+        "finance", "financier", "budget", "trésorerie", "tresorerie",
+        "contrôle de gestion", "controle de gestion", "reporting",
+        "tableau de bord", "rentabilité", "rentabilite",
     ],
-    "facturation_tresorerie": [
-        "relance impayé", "relance impaye", "encaissement", "tva",
-        "émettre une facture", "emettre une facture", "suivi des paiements",
+    "gestionnaire_comptable": [
+        "comptabilité", "comptabilite", "facture", "facturation", "relance",
+        "impayé", "impaye", "encaissement", "tva", "paiement",
     ],
-    # --- Certification & RSE ---
-    "preparateur_audits": [
-        "préparation audit", "preparation audit", "audit blanc",
-        "revue documentaire", "préparer l'audit", "preparer l'audit",
-        "écarts", "ecarts",
+    # --- Qualité & certification ---
+    "responsable_qualite": [
+        "qualité", "qualite", "qualiopi", "iso", "rse", "norme", "référentiel",
+        "referentiel", "procédure", "procedure", "26000", "9001",
+        "responsabilité sociétale", "responsabilite societale",
     ],
-    "redacteur_procedures": [
-        "procédure", "procedure", "mode opératoire", "mode operatoire",
-        "processus qualité", "processus qualite", "documentation qualité",
-        "documentation qualite",
+    "auditeur_qualiopi": [
+        "audit", "audit interne", "audit blanc", "écart", "ecart",
+        "revue documentaire", "conformité", "conformite", "preuve",
     ],
 }
 
@@ -351,34 +274,28 @@ def charger_taches() -> dict:
     return load_yaml("tasks.yaml")
 
 
-def organigramme() -> dict:
-    """Renvoie l'organigramme prêt pour l'affichage.
+def organigramme() -> list[dict]:
+    """Renvoie l'organisation par services, prête pour l'affichage.
 
-    Structure :
-        {
-          "ceo": "directeur_general",
-          "equipes": [
-            {"responsable": "responsable_marketing",
-             "specialistes": ["community_manager", ...]},
-            ...
-          ],
-        }
+    Chaque service : ``{"nom", "icone", "couleur", "membres": [...]}``.
     """
-    return {
-        "ceo": CEO,
-        "equipes": [
-            {"responsable": resp, "specialistes": list(equipe)}
-            for resp, equipe in EQUIPES
-        ],
-    }
+    return [
+        {
+            "nom": s["nom"],
+            "icone": s["icone"],
+            "couleur": s["couleur"],
+            "membres": list(s["membres"]),
+        }
+        for s in SERVICES
+    ]
 
 
 def router(demande: str) -> str:
     """Choisit automatiquement l'agent le plus pertinent pour une demande.
 
     Routage par comptage de mots-clés (déterministe, sans appel LLM).
-    En cas d'égalité ou d'absence de correspondance, renvoie l'assistant·e de
-    direction (rôle généraliste par défaut).
+    En cas d'absence de correspondance, renvoie l'assistante de direction
+    (rôle généraliste par défaut).
     """
     texte = demande.lower()
     scores: Dict[str, int] = {}
@@ -398,22 +315,24 @@ def valider_configuration() -> None:
     agents = charger_agents()
     taches = charger_taches()
 
-    # Toutes les clés du mapping existent dans agents.yaml
-    for agent in AGENT_TO_TASK:
-        assert agent in agents, f"Agent manquant dans agents.yaml : {agent}"
-        assert agent in LIBELLES, f"Libellé manquant pour : {agent}"
-        assert agent in MOTS_CLES, f"Mots-clés manquants pour : {agent}"
+    # L'organisation et agents.yaml décrivent exactement les mêmes agents.
+    assert set(AGENTS) == set(agents), "SERVICES et agents.yaml divergent"
 
-    # Toutes les tâches référencées existent dans tasks.yaml
-    for agent, tache in AGENT_TO_TASK.items():
-        assert tache in taches, f"Tâche manquante dans tasks.yaml : {tache}"
+    # Chaque agent a ses métadonnées et une tâche existante.
+    for cle in AGENTS:
+        assert cle in LIBELLES, f"Libellé manquant pour : {cle}"
+        assert cle in NOMS, f"Nom manquant pour : {cle}"
+        assert cle in PRESENTATION, f"Présentation manquante pour : {cle}"
+        assert cle in MOTS_CLES, f"Mots-clés manquants pour : {cle}"
+        assert cle in AGENT_TO_TASK, f"Tâche non mappée pour : {cle}"
+        assert AGENT_TO_TASK[cle] in taches, f"Tâche inexistante pour : {cle}"
 
-    # Chaque agent a les champs requis
+    # Chaque agent a les champs requis.
     for cle, conf in agents.items():
         for champ in ("role", "goal", "backstory"):
             assert conf.get(champ), f"Champ '{champ}' manquant pour {cle}"
 
-    # Chaque tâche a une description formatable et un expected_output
+    # Chaque tâche a une description formatable et un expected_output.
     for cle, conf in taches.items():
         assert conf.get("expected_output"), f"expected_output manquant : {cle}"
         conf["description"].format(sujet="x", contexte="y", objectif="z")
