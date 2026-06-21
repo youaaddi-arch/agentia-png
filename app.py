@@ -195,8 +195,13 @@ st.markdown(
 
 
 @st.cache_data(show_spinner=False)
-def _avatar_b64(chemin: str) -> str:
-    """Encode un visage en base64 (mis en cache) pour l'intégrer à la page."""
+def _avatar_b64(chemin: str, _signature: float) -> str:
+    """Encode un visage en base64 (mis en cache).
+
+    ``_signature`` (date de modification du fichier) fait partie de la clé de
+    cache : si l'image change, le cache est automatiquement recalculé — sinon
+    l'ancien visage resterait affiché.
+    """
     return base64.b64encode(Path(chemin).read_bytes()).decode("ascii")
 
 
@@ -215,7 +220,7 @@ def bouton_agent(cle: str, grand: bool = False) -> None:
         st.markdown(
             f'<div class="avatar-anim" style="width:{taille}px;height:{taille}px;'
             f'border-color:{couleur};animation-delay:{delai}s;">'
-            f'<img src="data:image/png;base64,{_avatar_b64(str(fichier))}" '
+            f'<img src="data:image/png;base64,{_avatar_b64(str(fichier), fichier.stat().st_mtime)}" '
             f'style="width:100%;height:100%;border-radius:50%;"></div>',
             unsafe_allow_html=True,
         )
