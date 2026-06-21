@@ -8,6 +8,7 @@ Lancement :
 
 from __future__ import annotations
 
+import base64
 import os
 import sys
 from pathlib import Path
@@ -116,6 +117,27 @@ st.markdown(
         margin:2px auto 6px; line-height:1; border:2px solid #FF5A4C;
         box-shadow:0 6px 16px rgba(0,0,0,.35);
       }
+      /* Avatars animés : flottement doux en boucle + réaction au survol */
+      .avatar-anim {
+        border-radius:50%; display:block; margin:2px auto 6px; overflow:hidden;
+        border:2px solid #FF5A4C; box-shadow:0 6px 16px rgba(0,0,0,.35);
+        animation:flotte 3.2s ease-in-out infinite;
+        transition:transform .2s ease, box-shadow .2s ease;
+      }
+      .avatar-anim:hover {
+        transform:scale(1.18) rotate(-3deg);
+        box-shadow:0 12px 26px rgba(255,90,76,.45);
+      }
+      @keyframes flotte {
+        0%   {transform:translateY(0)      rotate(0deg);}
+        25%  {transform:translateY(-5px)   rotate(-2deg);}
+        50%  {transform:translateY(0)      rotate(0deg);}
+        75%  {transform:translateY(-3px)   rotate(2deg);}
+        100% {transform:translateY(0)      rotate(0deg);}
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .avatar-anim {animation:none;}
+      }
     </style>
     """,
     unsafe_allow_html=True,
@@ -160,21 +182,36 @@ st.markdown(
 )
 
 
+@st.cache_data(show_spinner=False)
+def _avatar_b64(chemin: str) -> str:
+    """Encode un visage en base64 (mis en cache) pour l'intégrer à la page."""
+    return base64.b64encode(Path(chemin).read_bytes()).decode("ascii")
+
+
 def bouton_agent(cle: str, grand: bool = False) -> None:
-    """Affiche le visage + l'identité d'un membre + un bouton cliquable."""
+    """Affiche le visage animé + l'identité d'un membre + un bouton cliquable."""
     pres = PRESENTATION.get(cle, {})
     nom = NOMS.get(cle, LIBELLES.get(cle, cle))
     couleur = COULEUR_AGENT.get(cle, "#FF5A4C")
     taille = 86 if grand else 60
-    # Visage enregistré dans la plateforme (assets/avatars/) : aucun appel
-    # internet, l'image s'affiche donc toujours. Pastille de secours sinon.
+    # Décalage d'animation propre à chaque membre -> ils ne flottent pas en
+    # même temps (effet plus vivant).
+    delai = (sum(map(ord, cle)) % 20) / 10  # 0.0 à 1.9 s
     fichier = AVATAR_DIR / f"{cle}.png"
     if fichier.is_file():
-        st.image(str(fichier), width=taille)
+        # Image intégrée (base64) -> s'affiche toujours, et on peut l'animer.
+        st.markdown(
+            f'<div class="avatar-anim" style="width:{taille}px;height:{taille}px;'
+            f'border-color:{couleur};animation-delay:{delai}s;">'
+            f'<img src="data:image/png;base64,{_avatar_b64(str(fichier))}" '
+            f'style="width:100%;height:100%;border-radius:50%;"></div>',
+            unsafe_allow_html=True,
+        )
     else:
         st.markdown(
-            f'<div class="avatar" style="width:{taille}px;height:{taille}px;'
-            f'font-size:{int(taille * 0.45)}px;border-color:{couleur};'
+            f'<div class="avatar avatar-anim" style="width:{taille}px;'
+            f'height:{taille}px;font-size:{int(taille * 0.45)}px;'
+            f'border-color:{couleur};animation-delay:{delai}s;'
             f'background:radial-gradient(circle at 30% 25%,{couleur},#11131b);">'
             f'{pres.get("icone", "🤖")}</div>',
             unsafe_allow_html=True,
