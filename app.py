@@ -78,18 +78,17 @@ st.markdown(
       .hero p.sub {color:#A7AEC0; font-size:1.05rem; max-width:680px; margin:12px auto 4px;}
 
       .service-header {
-        color:#fff; font-weight:800; letter-spacing:.04em; font-size:1rem;
-        padding:9px 16px; border-radius:10px; margin:24px 0 14px;
-        box-shadow:0 4px 14px rgba(0,0,0,.3);
+        color:#fff; font-weight:800; letter-spacing:.05em; font-size:1.05rem;
+        text-align:center; padding:11px 16px; border-radius:12px; margin:26px 0 16px;
+        box-shadow:0 6px 18px rgba(0,0,0,.35);
       }
 
-      /* Carte d'agent (vue équipe) */
+      /* Carte d'agent (vue équipe) — teintée à la couleur de son service */
       .tcard {
-        background:linear-gradient(180deg,#191B24 0%,#14161d 100%);
-        border:1px solid #272a38; border-radius:16px; padding:16px 12px 10px;
-        text-align:center; transition:all .18s ease; min-height:172px;
+        border-radius:16px; padding:16px 12px 10px;
+        text-align:center; transition:all .18s ease; min-height:176px;
       }
-      .tcard:hover {transform:translateY(-3px); box-shadow:0 12px 28px rgba(0,0,0,.35);}
+      .tcard:hover {transform:translateY(-4px); box-shadow:0 14px 30px rgba(0,0,0,.4);}
       .tname {font-weight:700; color:#fff; font-size:1rem; margin-top:8px;}
       .trole {color:#9aa1b4; font-size:.8rem; line-height:1.35; margin-top:3px;}
 
@@ -246,8 +245,11 @@ if st.session_state.agent_actif is None:
         membres = service["membres"]
         for colonne, cle in zip(st.columns(max(len(membres), 1)), membres):
             with colonne:
+                coul = service["couleur"]
                 st.markdown(
-                    f'<div class="tcard" style="border-top:3px solid {service["couleur"]};">'
+                    f'<div class="tcard" style="background:linear-gradient(180deg,'
+                    f'{coul}2e 0%, {coul}10 55%, rgba(20,22,29,0.95) 100%);'
+                    f'border:1px solid {coul}66;border-top:4px solid {coul};">'
                     f'{avatar_html(cle, 64)}'
                     f'<div class="tname">{NOMS[cle]}</div>'
                     f'<div class="trole">{LIBELLES[cle]}</div></div>',
@@ -273,7 +275,8 @@ else:
 
     # En-tête
     st.markdown(
-        f'<div class="ahead">{avatar_html(cle, 88)}'
+        f'<div class="ahead" style="background:linear-gradient(180deg,{couleur}30 0%,'
+        f' rgba(26,30,42,0.96) 70%);border-color:{couleur}66;">{avatar_html(cle, 88)}'
         f'<div><div class="nm">{nom}</div><div class="rl">{role}</div>'
         f'<span class="badge" style="background:{couleur};">'
         f'{service["icone"]} {service["nom"]}</span></div></div>',
