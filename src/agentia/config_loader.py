@@ -65,7 +65,7 @@ AGENT_TO_TASK: Dict[str, str] = {
 
 # Prénom + nom donnés à chaque rôle : des noms « clin d'œil » au métier.
 NOMS: Dict[str, str] = {
-    CEO: "Yasmine Stratégie",
+    CEO: "Yousra Stratégie",
     "responsable_marketing": "Karim Marketing",
     "responsable_marches_publics": "Mehdi Public",
     "responsable_commercial": "Yanis Vente",
