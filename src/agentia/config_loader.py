@@ -259,6 +259,123 @@ MOTS_CLES: Dict[str, list[str]] = {
 }
 
 
+# Missions principales de chaque agent (affichées sur sa fiche).
+MISSIONS: Dict[str, list[str]] = {
+    "conseiller_strategie": [
+        "Définir les priorités et la feuille de route",
+        "Arbitrer les décisions importantes",
+        "Synthétiser la situation pour la direction",
+    ],
+    "assistante_direction": [
+        "Rédiger courriers, comptes rendus et notes",
+        "Organiser agendas et réunions",
+        "Retrouver documents et emails (Drive / Gmail)",
+    ],
+    "responsable_rh": [
+        "Rédiger contrats et éléments de paie",
+        "Gérer l'administration du personnel",
+        "Veiller à la conformité sociale",
+    ],
+    "charge_sourcing": [
+        "Rédiger des offres d'emploi et d'alternance",
+        "Sourcer et présélectionner des candidats",
+        "Suivre les contrats d'alternance",
+    ],
+    "responsable_marketing": [
+        "Définir la stratégie marketing",
+        "Piloter les campagnes multicanal",
+        "Suivre les KPI et la notoriété",
+    ],
+    "expert_google_ads": [
+        "Créer et optimiser les campagnes Google Ads",
+        "Gérer le budget publicitaire",
+        "Suivre le retour sur investissement (ROAS)",
+    ],
+    "webmaster_seo": [
+        "Gérer le site internet et le blog",
+        "Optimiser le référencement (SEO)",
+        "Rédiger des articles optimisés",
+    ],
+    "community_manager": [
+        "Animer les réseaux sociaux",
+        "Construire le calendrier éditorial",
+        "Rédiger des posts engageants",
+    ],
+    "ingenieur_commercial": [
+        "Qualifier les besoins clients",
+        "Négocier et conclure les ventes",
+        "Rédiger les propositions commerciales",
+    ],
+    "charge_prospection": [
+        "Identifier de nouveaux prospects",
+        "Rédiger des accroches de prospection",
+        "Préparer les devis",
+    ],
+    "veilleur_appels_offres": [
+        "Surveiller BOAMP / PLACE",
+        "Repérer les opportunités pertinentes",
+        "Synthétiser les consultations",
+    ],
+    "analyste_ao": [
+        "Analyser les dossiers de consultation",
+        "Étudier les critères d'attribution",
+        "Définir la stratégie de réponse",
+    ],
+    "redacteur_memoire_technique": [
+        "Rédiger les mémoires techniques",
+        "Aligner la réponse sur les critères",
+        "Valoriser la méthodologie",
+    ],
+    "gestionnaire_ao": [
+        "Constituer les pièces administratives",
+        "Vérifier la complétude (DC1, DC2, DUME)",
+        "Préparer les check-lists",
+    ],
+    "responsable_financier": [
+        "Élaborer le budget et le suivi de trésorerie",
+        "Produire les tableaux de bord",
+        "Contrôler la rentabilité",
+    ],
+    "gestionnaire_comptable": [
+        "Émettre et suivre les factures",
+        "Relancer les impayés",
+        "Tenir la comptabilité courante",
+    ],
+    "responsable_qualite": [
+        "Piloter la démarche Qualiopi / ISO",
+        "Rédiger procédures et indicateurs",
+        "Déployer la politique RSE",
+    ],
+    "auditeur_qualiopi": [
+        "Préparer et mener les audits internes",
+        "Identifier les écarts",
+        "Bâtir les plans d'action correctifs",
+    ],
+}
+
+# Tâche récurrente suggérée par défaut pour chaque agent (modifiable par l'utilisateur).
+TACHES_REC_DEFAUT: Dict[str, list[str]] = {
+    "conseiller_strategie": ["Chaque mois : point stratégique et priorités"],
+    "assistante_direction": ["Chaque lundi : préparer l'agenda de la semaine"],
+    "responsable_rh": ["Chaque mois : vérifier les échéances RH et contrats"],
+    "charge_sourcing": ["Chaque semaine : relancer les candidats en cours"],
+    "responsable_marketing": ["Chaque mois : bilan des actions marketing"],
+    "expert_google_ads": ["Chaque semaine : optimiser les campagnes Google Ads"],
+    "webmaster_seo": ["Chaque mois : un article de blog optimisé SEO"],
+    "community_manager": ["Chaque semaine : 3 idées de posts réseaux sociaux"],
+    "ingenieur_commercial": ["Chaque semaine : point sur le pipeline commercial"],
+    "charge_prospection": ["Chaque semaine : 10 nouveaux prospects à contacter"],
+    "veilleur_appels_offres": ["Chaque lundi : synthèse des nouveaux appels d'offres"],
+    "analyste_ao": ["À chaque appel d'offres : analyse des critères"],
+    "redacteur_memoire_technique": ["À chaque réponse : trame de mémoire technique"],
+    "gestionnaire_ao": ["À chaque dossier : check-list des pièces administratives"],
+    "responsable_financier": ["Chaque mois : tableau de bord financier"],
+    "gestionnaire_comptable": ["Chaque mois : relance des factures impayées"],
+    "responsable_qualite": ["Chaque trimestre : revue documentaire Qualiopi"],
+    "auditeur_qualiopi": ["Chaque trimestre : audit interne blanc"],
+}
+
+
 def load_yaml(nom_fichier: str) -> dict:
     """Charge un fichier YAML du dossier de configuration."""
     chemin = CONFIG_DIR / nom_fichier

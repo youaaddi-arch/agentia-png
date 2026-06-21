@@ -1,6 +1,9 @@
-"""Interface web Agentia PNG — page d'accueil + plateforme d'agents IA.
+"""Interface web Agentia PNG — équipe d'agents IA par services.
 
-Design inspiré de CrewAI : fond sombre, accent corail, cartes d'agents.
+Deux vues :
+  • « Équipe »  : les 7 services et leurs agents (cartes cliquables).
+  • « Fiche agent » (au clic) : conversation + historique, missions, et
+    tâches récurrentes (avec ajout).
 
 Lancement :
     streamlit run app.py
@@ -9,6 +12,7 @@ Lancement :
 from __future__ import annotations
 
 import base64
+import json
 import os
 import sys
 from pathlib import Path
@@ -17,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 try:
     from dotenv import load_dotenv
@@ -26,8 +31,7 @@ except ImportError:
     pass
 
 # Sur Streamlit Community Cloud, les clés sont saisies dans « Secrets ».
-# On les recopie dans les variables d'environnement pour que le moteur
-# (init_chat_model) les trouve, exactement comme le ferait un fichier .env.
+# On les recopie dans les variables d'environnement pour le moteur.
 try:
     for _cle in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AGENTIA_MODEL"):
         if _cle in st.secrets and not os.getenv(_cle):
@@ -35,120 +39,87 @@ try:
 except Exception:  # noqa: BLE001 — aucun secret défini (ex. en local) : on ignore.
     pass
 
-import json
-
-import streamlit.components.v1 as components
-
 from agentia.config_loader import (
     COULEUR_AGENT,
     LIBELLES,
+    MISSIONS,
     NOMS,
     PRESENTATION,
+    TACHES_REC_DEFAUT,
     organigramme,
 )
 from agentia.engine import AgentiaPlatform
 
 AVATAR_DIR = Path(__file__).parent / "assets" / "avatars"
 
-st.set_page_config(
-    page_title="Agentia PNG — Vos agents IA",
-    page_icon="🤖",
-    layout="wide",
-)
+st.set_page_config(page_title="Agentia — Vos agents IA", page_icon="🤖", layout="wide")
 
 # ---------------------------------------------------------------------------
-# Style (CSS) — inspiré de CrewAI
+# Style
 # ---------------------------------------------------------------------------
 st.markdown(
     """
     <style>
-      /* Cache le menu/footer Streamlit pour un rendu « produit » */
       #MainMenu, footer {visibility: hidden;}
+      .block-container {padding-top: 1.6rem; max-width: 1180px;}
 
-      .block-container {padding-top: 2.2rem; max-width: 1150px;}
-
-      /* ---- Hero ---- */
-      .hero {text-align: center; padding: 18px 0 6px;}
+      .hero {text-align:center; padding:6px 0 2px;}
       .hero .eyebrow {
-        display:inline-block; letter-spacing:.18em; font-size:.72rem;
+        display:inline-block; letter-spacing:.18em; font-size:.7rem;
         text-transform:uppercase; color:#FF5A4C; font-weight:700;
         border:1px solid rgba(255,90,76,.35); border-radius:999px;
-        padding:6px 14px; margin-bottom:18px; background:rgba(255,90,76,.07);
+        padding:5px 13px; margin-bottom:12px; background:rgba(255,90,76,.07);
       }
       .hero h1 {
-        font-size: 3.1rem; font-weight: 800; line-height:1.05; margin:0;
-        background: linear-gradient(90deg,#FFFFFF 0%, #FFC9C2 60%, #FF5A4C 100%);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        font-size:2.7rem; font-weight:800; margin:0; line-height:1.05;
+        background:linear-gradient(90deg,#FFFFFF 0%, #FFC9C2 60%, #FF5A4C 100%);
+        -webkit-background-clip:text; -webkit-text-fill-color:transparent;
       }
-      .hero p.sub {
-        color:#A7AEC0; font-size:1.12rem; max-width:660px;
-        margin:16px auto 6px; line-height:1.6;
-      }
+      .hero p.sub {color:#A7AEC0; font-size:1.05rem; max-width:680px; margin:12px auto 4px;}
 
-      /* ---- Section title ---- */
-      .section-title {
-        font-size:1.35rem; font-weight:700; color:#fff;
-        margin:30px 0 4px; display:flex; align-items:center; gap:10px;
-      }
-      .section-sub {color:#8b91a4; margin:0 0 14px; font-size:.95rem;}
-
-      /* ---- Grille de cartes d'agents ---- */
-      .agent-grid {
-        display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr));
-        gap:16px; margin: 6px 0 10px;
-      }
-      .agent-card {
-        background: linear-gradient(180deg,#191B24 0%, #14161d 100%);
-        border:1px solid #272a38; border-radius:16px; padding:22px 20px;
-        transition: all .18s ease;
-      }
-      .agent-card:hover {
-        border-color:#FF5A4C; transform:translateY(-4px);
-        box-shadow:0 14px 34px rgba(255,90,76,.14);
-      }
-      .agent-card .icon {font-size:30px; line-height:1;}
-      .agent-card .name {font-weight:700; font-size:1.05rem; color:#fff; margin:12px 0 6px;}
-      .agent-card .desc {color:#9aa1b4; font-size:.9rem; line-height:1.55;}
-
-      /* ---- Bandeau étapes ---- */
-      .steps {display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:6px 0 8px;}
-      .step {background:#14161d; border:1px solid #272a38; border-radius:12px; padding:14px 16px;}
-      .step .n {color:#FF5A4C; font-weight:800; font-size:.8rem;}
-      .step .t {color:#cfd3df; font-size:.9rem; margin-top:4px;}
-
-      /* ---- Avatars des agents ---- */
-      .avatar {
-        border-radius:50%; display:flex; align-items:center; justify-content:center;
-        margin:2px auto 6px; line-height:1; border:2px solid #FF5A4C;
-        box-shadow:0 6px 16px rgba(0,0,0,.35);
-      }
-      /* Avatars animés : flottement doux en boucle + réaction au survol */
-      .avatar-anim {
-        border-radius:50%; display:block; margin:2px auto 6px; overflow:hidden;
-        border:2px solid #FF5A4C; box-shadow:0 6px 16px rgba(0,0,0,.35);
-        animation:flotte 3.2s ease-in-out infinite;
-        transition:transform .2s ease, box-shadow .2s ease;
-      }
-      .avatar-anim:hover {
-        transform:scale(1.18) rotate(-3deg);
-        box-shadow:0 12px 26px rgba(255,90,76,.45);
-      }
-      @keyframes flotte {
-        0%   {transform:translateY(0)      rotate(0deg);}
-        25%  {transform:translateY(-5px)   rotate(-2deg);}
-        50%  {transform:translateY(0)      rotate(0deg);}
-        75%  {transform:translateY(-3px)   rotate(2deg);}
-        100% {transform:translateY(0)      rotate(0deg);}
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .avatar-anim {animation:none;}
-      }
-
-      /* ---- Bandeau de service ---- */
       .service-header {
         color:#fff; font-weight:800; letter-spacing:.04em; font-size:1rem;
-        padding:9px 16px; border-radius:10px; margin:22px 0 12px;
+        padding:9px 16px; border-radius:10px; margin:24px 0 14px;
         box-shadow:0 4px 14px rgba(0,0,0,.3);
+      }
+
+      /* Carte d'agent (vue équipe) */
+      .tcard {
+        background:linear-gradient(180deg,#191B24 0%,#14161d 100%);
+        border:1px solid #272a38; border-radius:16px; padding:16px 12px 10px;
+        text-align:center; transition:all .18s ease; min-height:172px;
+      }
+      .tcard:hover {transform:translateY(-3px); box-shadow:0 12px 28px rgba(0,0,0,.35);}
+      .tname {font-weight:700; color:#fff; font-size:1rem; margin-top:8px;}
+      .trole {color:#9aa1b4; font-size:.8rem; line-height:1.35; margin-top:3px;}
+
+      /* En-tête de fiche agent */
+      .ahead {
+        display:flex; align-items:center; gap:18px;
+        background:linear-gradient(180deg,#191B24 0%,#14161d 100%);
+        border:1px solid #272a38; border-radius:18px; padding:18px 22px; margin-bottom:8px;
+      }
+      .ahead .nm {font-size:1.7rem; font-weight:800; color:#fff; line-height:1.1;}
+      .ahead .rl {color:#cfd3df; font-size:1rem; margin-top:2px;}
+      .badge {display:inline-block; color:#fff; font-size:.72rem; font-weight:700;
+        padding:3px 10px; border-radius:999px; margin-top:8px;}
+
+      .avatar, .avatar-anim {
+        border-radius:50%; overflow:hidden; border:2px solid #FF5A4C;
+        box-shadow:0 6px 16px rgba(0,0,0,.35); display:flex;
+        align-items:center; justify-content:center; line-height:1;
+      }
+      .avatar-anim {display:block; animation:flotte 3.2s ease-in-out infinite;
+        transition:transform .2s ease;}
+      .avatar-anim:hover {transform:scale(1.12) rotate(-3deg);}
+      @keyframes flotte {
+        0%{transform:translateY(0)}50%{transform:translateY(-5px)}100%{transform:translateY(0)}
+      }
+      @media (prefers-reduced-motion: reduce){.avatar-anim{animation:none;}}
+
+      .mission-item {
+        background:#14161d; border:1px solid #272a38; border-left:3px solid #FF5A4C;
+        border-radius:10px; padding:11px 14px; margin-bottom:8px; color:#dfe3ee;
       }
     </style>
     """,
@@ -162,276 +133,230 @@ def charger_plateforme() -> AgentiaPlatform:
 
 
 plateforme = charger_plateforme()
-agents = plateforme.agents_disponibles()
 
-# ---------------------------------------------------------------------------
-# Hero
-# ---------------------------------------------------------------------------
-st.markdown(
-    """
-    <div class="hero">
-      <span class="eyebrow">Paris Nord Groupe · Plateforme d'agents IA</span>
-      <h1>Agentia</h1>
-      <p class="sub">Votre direction augmentée par l'IA. Sept services et leurs
-      agents spécialisés, prêts à rédiger, analyser et produire vos livrables
-      professionnels — et à vous les lire à voix haute, en français.</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+# État de session
+st.session_state.setdefault("agent_actif", None)
+st.session_state.setdefault("historique", {})       # cle -> [{role, content}]
+st.session_state.setdefault("taches_rec", {})       # cle -> [str]
 
-# ---------------------------------------------------------------------------
-# Organigramme cliquable (CEO -> responsables -> spécialistes)
-# ---------------------------------------------------------------------------
-if "agent_selectionne" not in st.session_state:
-    st.session_state.agent_selectionne = None
-
-st.markdown(
-    '<div class="section-title">👥 Votre équipe (organigramme)</div>'
-    '<div class="section-sub">Cliquez sur un agent pour qu\'il traite votre '
-    'demande — ou laissez le mode automatique choisir pour vous.</div>',
-    unsafe_allow_html=True,
-)
+org = organigramme()
+COULEUR_SERVICE = {m: s["couleur"] for s in org for m in s["membres"]}
+SERVICE_DE = {m: s for s in org for m in s["membres"]}
 
 
 @st.cache_data(show_spinner=False)
 def _avatar_b64(chemin: str, _signature: float) -> str:
-    """Encode un visage en base64 (mis en cache).
-
-    ``_signature`` (date de modification du fichier) fait partie de la clé de
-    cache : si l'image change, le cache est automatiquement recalculé — sinon
-    l'ancien visage resterait affiché.
-    """
+    """Encode un visage en base64 (clé de cache = date de modif du fichier)."""
     return base64.b64encode(Path(chemin).read_bytes()).decode("ascii")
 
 
-def bouton_agent(cle: str, grand: bool = False) -> None:
-    """Affiche le visage animé + l'identité d'un membre + un bouton cliquable."""
-    pres = PRESENTATION.get(cle, {})
-    nom = NOMS.get(cle, LIBELLES.get(cle, cle))
+def avatar_html(cle: str, taille: int = 64) -> str:
+    """Renvoie le HTML d'un avatar animé (image Pixar, ou pastille de secours)."""
     couleur = COULEUR_AGENT.get(cle, "#FF5A4C")
-    taille = 86 if grand else 60
-    # Décalage d'animation propre à chaque membre -> ils ne flottent pas en
-    # même temps (effet plus vivant).
-    delai = (sum(map(ord, cle)) % 20) / 10  # 0.0 à 1.9 s
     fichier = AVATAR_DIR / f"{cle}.png"
+    delai = (sum(map(ord, cle)) % 20) / 10
     if fichier.is_file():
-        # Image intégrée (base64) -> s'affiche toujours, et on peut l'animer.
-        st.markdown(
+        b64 = _avatar_b64(str(fichier), fichier.stat().st_mtime)
+        return (
             f'<div class="avatar-anim" style="width:{taille}px;height:{taille}px;'
-            f'border-color:{couleur};animation-delay:{delai}s;">'
-            f'<img src="data:image/png;base64,{_avatar_b64(str(fichier), fichier.stat().st_mtime)}" '
-            f'style="width:100%;height:100%;border-radius:50%;"></div>',
-            unsafe_allow_html=True,
+            f'border-color:{couleur};animation-delay:{delai}s;margin:0 auto;">'
+            f'<img src="data:image/png;base64,{b64}" '
+            f'style="width:100%;height:100%;border-radius:50%;"></div>'
         )
-    else:
-        st.markdown(
-            f'<div class="avatar avatar-anim" style="width:{taille}px;'
-            f'height:{taille}px;font-size:{int(taille * 0.45)}px;'
-            f'border-color:{couleur};animation-delay:{delai}s;'
-            f'background:radial-gradient(circle at 30% 25%,{couleur},#11131b);">'
-            f'{pres.get("icone", "🤖")}</div>',
-            unsafe_allow_html=True,
-        )
-    # Le rôle, en petit, juste sous le visage.
-    st.markdown(
-        f'<div style="font-size:.72rem;color:{couleur};font-weight:700;'
-        f'margin:-2px 0 2px;">{pres.get("icone", "🤖")} {LIBELLES.get(cle, cle)}</div>',
-        unsafe_allow_html=True,
+    icone = PRESENTATION.get(cle, {}).get("icone", "🤖")
+    return (
+        f'<div class="avatar" style="width:{taille}px;height:{taille}px;margin:0 auto;'
+        f'font-size:{int(taille * 0.45)}px;border-color:{couleur};'
+        f'background:radial-gradient(circle at 30% 25%,{couleur},#11131b);">{icone}</div>'
     )
-    actif = st.session_state.agent_selectionne == cle
-    # Le bouton porte le prénom/nom du membre.
-    if st.button(
-        nom,
-        key=f"org_{cle}",
-        use_container_width=True,
-        help=f"{LIBELLES.get(cle, cle)} — {pres.get('accroche', '')}",
-        type="primary" if actif else "secondary",
-    ):
-        st.session_state.agent_selectionne = cle
-        st.rerun()
 
 
-org = organigramme()
-
-# Affichage par services : bandeau coloré du service, puis ses membres.
-for service in org:
-    st.markdown(
-        f'<div class="service-header" style="background:{service["couleur"]};">'
-        f'{service["icone"]} {service["nom"].upper()}</div>',
-        unsafe_allow_html=True,
-    )
-    membres = service["membres"]
-    colonnes = st.columns(max(len(membres), 1))
-    for colonne, cle in zip(colonnes, membres):
-        with colonne:
-            bouton_agent(cle)
-
-# ---------------------------------------------------------------------------
-# Comment ça marche
-# ---------------------------------------------------------------------------
-st.markdown('<div class="section-title">⚡ Comment ça marche</div>', unsafe_allow_html=True)
-st.markdown(
-    """
-    <div class="steps">
-      <div class="step"><div class="n">ÉTAPE 1</div><div class="t">Décrivez votre besoin</div></div>
-      <div class="step"><div class="n">ÉTAPE 2</div><div class="t">L'agent adapté est choisi</div></div>
-      <div class="step"><div class="n">ÉTAPE 3</div><div class="t">Récupérez votre livrable</div></div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# ---------------------------------------------------------------------------
-# Zone de travail
-# ---------------------------------------------------------------------------
-st.markdown('<div class="section-title">📝 Lancer une demande</div>', unsafe_allow_html=True)
-
-with st.container(border=True):
-    agent_clique = st.session_state.agent_selectionne
-    cle_agent = None
-
-    if agent_clique:
-        # Un agent a été choisi en cliquant dans l'organigramme.
-        pres = PRESENTATION.get(agent_clique, {})
-        st.success(
-            f"Membre sélectionné : {pres.get('icone', '🤖')} "
-            f"**{NOMS.get(agent_clique, agent_clique)}** "
-            f"({LIBELLES.get(agent_clique, agent_clique)}) — il traitera votre demande."
-        )
-        if st.button("✖ Désélectionner (revenir au mode automatique)"):
-            st.session_state.agent_selectionne = None
-            st.rerun()
-        mode = "Un agent"
-        cle_agent = agent_clique
-    else:
-        mode = st.radio(
-            "Mode de traitement",
-            ["Automatique 🪄", "Un agent", "Toute l'équipe"],
-            horizontal=True,
-            help="« Automatique » choisit pour vous le responsable le plus adapté. "
-            "Astuce : cliquez sur un agent dans l'organigramme ci-dessus.",
-        )
-        if mode == "Un agent":
-            libelle = st.selectbox("Choisissez l'agent", list(agents.values()))
-            cle_agent = next(c for c, lib in agents.items() if lib == libelle)
-
-    sujet = st.text_area(
-        "Votre demande",
-        placeholder="Ex. : Rédige un mémoire technique pour un appel d'offres "
-        "de formation Manager en TPE…",
-        height=110,
-    )
-    col1, col2 = st.columns(2)
-    with col1:
-        contexte = st.text_input("Contexte (optionnel)", value="")
-    with col2:
-        objectif = st.text_input("Objectif (optionnel)", value="")
-
-        lancer = st.button("🚀 Lancer", type="primary", use_container_width=True)
+def ouvrir(cle: str) -> None:
+    st.session_state.agent_actif = cle
+    st.rerun()
 
 
-def lecteur_vocal(texte: str, nom: str = "L'agent") -> None:
-    """Affiche un lecteur qui fait LIRE le résultat à voix haute.
-
-    Utilise la synthèse vocale intégrée au navigateur (Web Speech API) :
-    gratuit, sans clé API ni service externe. La voix française est choisie
-    automatiquement si elle est disponible.
-    """
-    contenu = json.dumps(texte[:6000])  # on borne pour les très longues réponses
-    titre = json.dumps(f"🔊 {nom} vous lit la réponse")
+def lecteur_vocal(texte: str) -> None:
+    """Bouton de lecture vocale (voix du navigateur, gratuite)."""
+    contenu = json.dumps(texte[:6000])
     components.html(
         f"""
         <div style="font-family:sans-serif;">
           <button id="play" style="background:#FF5A4C;color:#fff;border:none;
-            border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer;">
-            🔊 Écouter</button>
+            border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;">🔊 Écouter</button>
           <button id="stop" style="background:#272a38;color:#fff;border:none;
-            border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer;
-            margin-left:6px;">⏹️ Stop</button>
+            border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;margin-left:6px;">⏹️ Stop</button>
           <script>
-            const texte = {contenu};
-            function choisirVoix() {{
-              const vs = window.speechSynthesis.getVoices();
-              return vs.find(v => v.lang && v.lang.toLowerCase().startsWith('fr'));
-            }}
             document.getElementById('play').onclick = function() {{
               window.speechSynthesis.cancel();
-              const u = new SpeechSynthesisUtterance(texte);
-              u.lang = 'fr-FR';
-              const v = choisirVoix();
-              if (v) u.voice = v;
-              u.rate = 1.0;
-              window.speechSynthesis.speak(u);
+              const u = new SpeechSynthesisUtterance({contenu});
+              u.lang='fr-FR';
+              const v=window.speechSynthesis.getVoices().find(x=>x.lang&&x.lang.toLowerCase().startsWith('fr'));
+              if(v)u.voice=v; window.speechSynthesis.speak(u);
             }};
-            document.getElementById('stop').onclick = function() {{
-              window.speechSynthesis.cancel();
-            }};
-            void {titre};
+            document.getElementById('stop').onclick=function(){{window.speechSynthesis.cancel();}};
           </script>
-        </div>
-        """,
-        height=60,
+        </div>""",
+        height=52,
     )
 
 
-if lancer:
-    if not sujet.strip():
-        st.warning("Merci de saisir une demande.")
-    else:
-        ctx = contexte.strip() or "Aucun contexte particulier."
-        obj = objectif.strip() or "Produire un livrable professionnel et exploitable."
-        with st.spinner("Vos agents travaillent…"):
-            try:
-                nom_lecteur = "L'équipe"
-                if mode == "Toute l'équipe":
-                    resultat = plateforme.executer_equipe(sujet, ctx, obj)
-                elif mode == "Automatique 🪄":
-                    choisi, resultat = plateforme.executer_auto(sujet, ctx, obj)
-                    nom_lecteur = NOMS.get(choisi, agents.get(choisi, choisi))
-                    st.info(
-                        f"🤖 Agent choisi : **{nom_lecteur}** "
-                        f"({agents.get(choisi, choisi)})"
-                    )
-                else:
-                    resultat = plateforme.executer_agent(cle_agent, sujet, ctx, obj)
-                    nom_lecteur = NOMS.get(cle_agent, "L'agent")
-                st.markdown("### ✅ Résultat")
-                st.markdown(resultat)
-                # 🔊 Lecture vocale du résultat (voix du navigateur, gratuite).
-                lecteur_vocal(resultat, nom_lecteur)
-                st.download_button(
-                    "💾 Télécharger le résultat (Markdown)",
-                    data=resultat,
-                    file_name="agentia_resultat.md",
-                    mime="text/markdown",
-                )
-            except Exception as exc:  # noqa: BLE001
-                st.error(
-                    f"Erreur : {exc}\n\n"
-                    "Vérifiez que votre clé API est bien renseignée dans le "
-                    "fichier .env (ANTHROPIC_API_KEY)."
-                )
-
-# ---------------------------------------------------------------------------
-# Barre latérale
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# BARRE LATÉRALE — navigation
+# ===========================================================================
 with st.sidebar:
     st.markdown("### 🤖 Agentia")
-    st.caption("Plateforme d'agents IA — LangChain + LangGraph")
+    if st.button("🏠 Accueil — toute l'équipe", use_container_width=True):
+        st.session_state.agent_actif = None
+        st.rerun()
     st.divider()
-    st.markdown("**Votre équipe (7 services)**")
     for service in org:
         st.markdown(f"**{service['icone']} {service['nom']}**")
         for cle in service["membres"]:
-            icone = PRESENTATION.get(cle, {}).get("icone", "🤖")
-            st.markdown(
-                f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {icone} **{NOMS.get(cle, cle)}** — "
-                f"{LIBELLES.get(cle, cle)}",
-                unsafe_allow_html=True,
-            )
+            ic = PRESENTATION.get(cle, {}).get("icone", "🤖")
+            if st.button(f"{ic} {NOMS[cle]}", key=f"nav_{cle}", use_container_width=True):
+                ouvrir(cle)
     st.divider()
-    st.caption(
-        "Configurez votre clé API dans le fichier `.env` "
-        "(`ANTHROPIC_API_KEY`). Voir `.env.example`."
+    st.caption("Clé API à configurer dans les Secrets (`ANTHROPIC_API_KEY`).")
+
+
+# ===========================================================================
+# VUE 1 — ÉQUIPE
+# ===========================================================================
+if st.session_state.agent_actif is None:
+    st.markdown(
+        """
+        <div class="hero">
+          <span class="eyebrow">Paris Nord Groupe · Plateforme d'agents IA</span>
+          <h1>Agentia</h1>
+          <p class="sub">Votre équipe augmentée par l'IA — 7 services, 18 agents.
+          Cliquez sur un agent pour ouvrir sa fiche : lui parler, voir ses missions
+          et gérer ses tâches récurrentes.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
+
+    for service in org:
+        st.markdown(
+            f'<div class="service-header" style="background:{service["couleur"]};">'
+            f'{service["icone"]} {service["nom"].upper()}</div>',
+            unsafe_allow_html=True,
+        )
+        membres = service["membres"]
+        for colonne, cle in zip(st.columns(max(len(membres), 1)), membres):
+            with colonne:
+                st.markdown(
+                    f'<div class="tcard" style="border-top:3px solid {service["couleur"]};">'
+                    f'{avatar_html(cle, 64)}'
+                    f'<div class="tname">{NOMS[cle]}</div>'
+                    f'<div class="trole">{LIBELLES[cle]}</div></div>',
+                    unsafe_allow_html=True,
+                )
+                if st.button("Ouvrir la fiche ›", key=f"open_{cle}", use_container_width=True):
+                    ouvrir(cle)
+
+
+# ===========================================================================
+# VUE 2 — FICHE AGENT
+# ===========================================================================
+else:
+    cle = st.session_state.agent_actif
+    nom = NOMS.get(cle, cle)
+    role = LIBELLES.get(cle, cle)
+    service = SERVICE_DE.get(cle, {"nom": "", "couleur": "#FF5A4C", "icone": "🤖"})
+    couleur = service["couleur"]
+
+    if st.button("‹ Retour à l'équipe"):
+        st.session_state.agent_actif = None
+        st.rerun()
+
+    # En-tête
+    st.markdown(
+        f'<div class="ahead">{avatar_html(cle, 88)}'
+        f'<div><div class="nm">{nom}</div><div class="rl">{role}</div>'
+        f'<span class="badge" style="background:{couleur};">'
+        f'{service["icone"]} {service["nom"]}</span></div></div>',
+        unsafe_allow_html=True,
+    )
+
+    onglet_chat, onglet_miss, onglet_taches = st.tabs(
+        ["💬 Conversation", "🎯 Missions", "🔁 Tâches récurrentes"]
+    )
+
+    # ---- Onglet Conversation + historique ----
+    with onglet_chat:
+        historique = st.session_state.historique.setdefault(cle, [])
+        if not historique:
+            st.caption(f"Posez votre première question à {nom}. L'historique apparaîtra ici.")
+        for msg in historique:
+            avatar = "🧑" if msg["role"] == "user" else PRESENTATION.get(cle, {}).get("icone", "🤖")
+            with st.chat_message(msg["role"], avatar=avatar):
+                st.markdown(msg["content"])
+        if historique and historique[-1]["role"] == "assistant":
+            lecteur_vocal(historique[-1]["content"])
+
+        with st.form(f"chat_{cle}", clear_on_submit=True):
+            question = st.text_area(
+                f"Écrivez à {nom}",
+                placeholder="Ex. : Rédige un courrier de relance pour une facture impayée…",
+                height=90,
+            )
+            envoye = st.form_submit_button("Envoyer ✉️", type="primary", use_container_width=True)
+        col_a, col_b = st.columns([1, 4])
+        with col_a:
+            if st.button("🗑️ Effacer l'historique", use_container_width=True):
+                st.session_state.historique[cle] = []
+                st.rerun()
+
+        if envoye and question.strip():
+            historique.append({"role": "user", "content": question.strip()})
+            with st.spinner(f"{nom} réfléchit…"):
+                try:
+                    reponse = plateforme.executer_agent(cle, question.strip())
+                except Exception as exc:  # noqa: BLE001
+                    reponse = (
+                        f"⚠️ Erreur : {exc}\n\n"
+                        "Vérifiez que la clé API est bien configurée (Secrets / `.env`)."
+                    )
+            historique.append({"role": "assistant", "content": reponse})
+            st.rerun()
+
+    # ---- Onglet Missions ----
+    with onglet_miss:
+        st.markdown(f"#### 🎯 Les missions de {nom}")
+        for mission in MISSIONS.get(cle, []):
+            st.markdown(f'<div class="mission-item">✓ {mission}</div>', unsafe_allow_html=True)
+        st.caption(f"💬 Astuce : demandez n'importe laquelle de ces missions à {nom} dans l'onglet Conversation.")
+
+    # ---- Onglet Tâches récurrentes ----
+    with onglet_taches:
+        taches = st.session_state.taches_rec.setdefault(
+            cle, list(TACHES_REC_DEFAUT.get(cle, []))
+        )
+        st.markdown(f"#### 🔁 Tâches récurrentes de {nom}")
+        if not taches:
+            st.info("Aucune tâche récurrente pour l'instant. Ajoutez-en une ci-dessous.")
+        for i, tache in enumerate(taches):
+            c1, c2 = st.columns([9, 1])
+            c1.markdown(f'<div class="mission-item">🔁 {tache}</div>', unsafe_allow_html=True)
+            if c2.button("🗑️", key=f"deltask_{cle}_{i}"):
+                taches.pop(i)
+                st.rerun()
+
+        st.markdown("**➕ Ajouter une tâche récurrente**")
+        with st.form(f"addtask_{cle}", clear_on_submit=True):
+            desc = st.text_input("Que doit-il faire ?", placeholder="Ex. : préparer le reporting")
+            freq = st.selectbox(
+                "Fréquence", ["Chaque jour", "Chaque semaine", "Chaque mois", "Chaque trimestre"]
+            )
+            ajoute = st.form_submit_button("➕ Ajouter la tâche", type="primary")
+        if ajoute and desc.strip():
+            taches.append(f"{freq} : {desc.strip()}")
+            st.rerun()
+
+        st.caption(
+            "ℹ️ Ces tâches forment la « feuille de route » de l'agent (gardées pendant "
+            "votre session). L'exécution automatique programmée viendra dans une "
+            "prochaine étape."
+        )

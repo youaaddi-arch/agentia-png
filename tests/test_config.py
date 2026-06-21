@@ -11,9 +11,11 @@ from agentia.config_loader import (  # noqa: E402
     AGENTS,
     LEADS,
     LIBELLES,
+    MISSIONS,
     NOMS,
     PRESENTATION,
     SERVICES,
+    TACHES_REC_DEFAUT,
     charger_agents,
     charger_taches,
     organigramme,
@@ -56,6 +58,12 @@ def test_metadonnees_completes():
 def test_taches_existantes():
     taches = charger_taches()
     assert set(AGENT_TO_TASK.values()) <= set(taches)
+
+
+def test_missions_et_taches():
+    for cle in AGENTS:
+        assert MISSIONS.get(cle), f"missions manquantes : {cle}"
+        assert cle in TACHES_REC_DEFAUT, f"tâche récurrente manquante : {cle}"
 
 
 def test_avatars_presents():
