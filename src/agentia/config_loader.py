@@ -85,7 +85,7 @@ NOMS: Dict[str, str] = {
     "redacteur_comptes_rendus": "Diego Rapport",
     "suivi_documents": "Inès Validité",
     "facturation_tresorerie": "Fatima Facture",
-    "preparateur_audits": "Amine Audit",
+    "preparateur_audits": "Anas Audit",
     "redacteur_procedures": "Samira Procédure",
 }
 
