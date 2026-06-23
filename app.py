@@ -121,6 +121,20 @@ st.markdown(
         border-radius:10px; padding:11px 14px; margin-bottom:8px; color:#1F2433;
         box-shadow:0 2px 8px rgba(31,36,51,.05);
       }
+
+      /* ---- Barre latérale bleue ---- */
+      section[data-testid="stSidebar"] {
+        background:linear-gradient(180deg,#1E3A8A 0%, #16306E 100%);
+      }
+      section[data-testid="stSidebar"] * {color:#EAF0FF !important;}
+      section[data-testid="stSidebar"] .stButton > button {
+        background:rgba(255,255,255,.12); color:#fff !important;
+        border:1px solid rgba(255,255,255,.35); border-radius:9px; font-weight:600;
+      }
+      section[data-testid="stSidebar"] .stButton > button:hover {
+        background:rgba(255,255,255,.24); border-color:#fff;
+      }
+      section[data-testid="stSidebar"] hr {border-color:rgba(255,255,255,.25);}
     </style>
     """,
     unsafe_allow_html=True,
