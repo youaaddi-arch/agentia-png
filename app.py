@@ -61,6 +61,17 @@ st.markdown(
     """
     <style>
       #MainMenu, footer {visibility: hidden;}
+
+      /* Fond BLANC forcé (s'applique au simple rafraîchissement, sans reboot) */
+      html, body, .stApp, [data-testid="stAppViewContainer"],
+      [data-testid="stMain"], [data-testid="stHeader"] {
+        background:#FFFFFF !important;
+      }
+      /* Texte foncé par défaut dans la zone principale (lisible sur blanc) */
+      [data-testid="stMain"] {color:#1F2433;}
+      /* Les bandeaux de service gardent leur texte blanc */
+      .service-header {color:#fff !important;}
+
       .block-container {padding-top: 1.6rem; max-width: 1180px;}
 
       .hero {text-align:center; padding:6px 0 2px;}
