@@ -8,3 +8,8 @@ python-dotenv>=1.0.0
 
 # Interface web optionnelle
 streamlit>=1.30.0
+
+# Accès Google Drive + Gmail pour les agents (optionnel)
+google-api-python-client>=2.0.0
+google-auth>=2.0.0
+google-auth-httplib2>=0.2.0

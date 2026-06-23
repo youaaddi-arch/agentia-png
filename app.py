@@ -49,8 +49,12 @@ from agentia.config_loader import (
     organigramme,
 )
 from agentia.engine import AgentiaPlatform
+from agentia.google_tools import google_actif
 
 AVATAR_DIR = Path(__file__).parent / "assets" / "avatars"
+
+# Agents disposant des outils Google (accès réel Drive + Gmail).
+AGENTS_GOOGLE = {"assistante_direction"}
 
 st.set_page_config(page_title="Agentia — Vos agents IA", page_icon="🤖", layout="wide")
 
@@ -320,6 +324,11 @@ else:
         icone_agent = PRESENTATION.get(cle, {}).get("icone", "🤖")
         question_en_attente = st.session_state.pending.get(cle)
 
+        if cle in AGENTS_GOOGLE:
+            if google_actif():
+                st.success("🔗 Connectée à votre Google Drive et votre Gmail — je peux chercher des fichiers et préparer des emails.")
+            else:
+                st.info("ℹ️ Accès Drive/Gmail pas encore configuré. Une fois branché, je pourrai chercher vos fichiers et préparer vos emails.")
         if not historique and not question_en_attente:
             st.caption(f"Posez votre première question à {nom}. L'historique apparaîtra ici.")
         for msg in historique:
@@ -328,16 +337,25 @@ else:
                 st.markdown(msg["content"])
 
         if question_en_attente:
-            # La réponse s'écrit au fil de l'eau (streaming) -> perçu plus rapide.
             with st.chat_message("assistant", avatar=icone_agent):
-                try:
-                    reponse = st.write_stream(plateforme.stream_agent(cle, question_en_attente))
-                except Exception as exc:  # noqa: BLE001
-                    reponse = (
-                        f"⚠️ Erreur : {exc}\n\n"
-                        "Vérifiez que la clé API est bien configurée (Secrets)."
-                    )
+                if cle in AGENTS_GOOGLE and google_actif():
+                    # Agent outillé : il peut chercher dans le Drive / préparer un mail.
+                    with st.spinner(f"{nom} consulte votre Drive / vos mails…"):
+                        try:
+                            reponse = plateforme.repondre_avec_outils(cle, question_en_attente)
+                        except Exception as exc:  # noqa: BLE001
+                            reponse = f"⚠️ Erreur : {exc}"
                     st.markdown(reponse)
+                else:
+                    # Réponse en streaming (perçu plus rapide).
+                    try:
+                        reponse = st.write_stream(plateforme.stream_agent(cle, question_en_attente))
+                    except Exception as exc:  # noqa: BLE001
+                        reponse = (
+                            f"⚠️ Erreur : {exc}\n\n"
+                            "Vérifiez que la clé API est bien configurée (Secrets)."
+                        )
+                        st.markdown(reponse)
             historique.append({"role": "assistant", "content": str(reponse)})
             st.session_state.pending[cle] = None
             st.rerun()

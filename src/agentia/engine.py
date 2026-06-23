@@ -20,7 +20,7 @@ import os
 from typing import Dict, TypedDict
 
 from langchain.chat_models import init_chat_model
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import END, StateGraph
 
 from agentia.config_loader import (
@@ -188,6 +188,71 @@ class AgentiaPlatform:
             texte = getattr(morceau, "content", "")
             if texte:
                 yield texte
+
+    # ------------------------------------------------------------------
+    # Agents AVEC outils (accès réel au Drive / Gmail)
+    # ------------------------------------------------------------------
+    def _outils_google(self):
+        from langchain_core.tools import tool
+
+        from agentia import google_tools as g
+
+        @tool
+        def chercher_dans_drive(requete: str) -> str:
+            """Cherche des fichiers dans le Google Drive de l'utilisateur par nom
+            (ex. un tableau, un contrat). Renvoie les noms et les liens."""
+            return g.rechercher_drive(requete)
+
+        @tool
+        def chercher_des_emails(requete: str) -> str:
+            """Cherche des emails dans la boîte Gmail de l'utilisateur (syntaxe
+            Gmail, ex. 'from:client facture'). Renvoie objet, expéditeur, date."""
+            return g.rechercher_emails(requete)
+
+        @tool
+        def preparer_brouillon_email(destinataire: str, sujet: str, message: str) -> str:
+            """Prépare un BROUILLON d'email Gmail (ne l'envoie pas). À utiliser
+            quand l'utilisateur demande d'écrire / envoyer un email."""
+            return g.creer_brouillon_email(destinataire, sujet, message)
+
+        return [chercher_dans_drive, chercher_des_emails, preparer_brouillon_email]
+
+    def repondre_avec_outils(self, cle_agent: str, message: str) -> str:
+        """Fait répondre un agent en lui donnant accès au Drive et à Gmail.
+
+        Boucle d'appel d'outils : le modèle peut décider d'appeler un outil
+        (chercher dans le Drive, préparer un brouillon…), on l'exécute, puis on
+        lui renvoie le résultat jusqu'à la réponse finale.
+        """
+        outils = self._outils_google()
+        dispatch = {o.name: o for o in outils}
+        llm = self.llm.bind_tools(outils)
+
+        consigne = (
+            "\n\nTu disposes d'OUTILS réels connectés au Drive et à Gmail de "
+            "l'utilisateur : utilise-les pour agir concrètement plutôt que de "
+            "donner des conseils généraux. N'invente JAMAIS de fichier ni de "
+            "résultat : appuie-toi uniquement sur ce que renvoient les outils. "
+            "Pour les emails, prépare un BROUILLON (n'envoie jamais directement)."
+        )
+        messages = [
+            SystemMessage(content=self._prompt_systeme(cle_agent) + consigne),
+            HumanMessage(content=message),
+        ]
+        reponse = None
+        for _ in range(6):  # garde-fou anti-boucle
+            reponse = llm.invoke(messages)
+            messages.append(reponse)
+            appels = getattr(reponse, "tool_calls", None)
+            if not appels:
+                break
+            for appel in appels:
+                outil = dispatch.get(appel["name"])
+                sortie = outil.invoke(appel["args"]) if outil else "Outil inconnu."
+                messages.append(
+                    ToolMessage(content=str(sortie), tool_call_id=appel["id"])
+                )
+        return str(getattr(reponse, "content", "") or "(réponse vide)")
 
     def executer_auto(
         self,
