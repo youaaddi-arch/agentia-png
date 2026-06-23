@@ -72,10 +72,10 @@ st.markdown(
       }
       .hero h1 {
         font-size:2.7rem; font-weight:800; margin:0; line-height:1.05;
-        background:linear-gradient(90deg,#FFFFFF 0%, #FFC9C2 60%, #FF5A4C 100%);
+        background:linear-gradient(90deg,#1F2433 0%, #FF5A4C 100%);
         -webkit-background-clip:text; -webkit-text-fill-color:transparent;
       }
-      .hero p.sub {color:#A7AEC0; font-size:1.05rem; max-width:680px; margin:12px auto 4px;}
+      .hero p.sub {color:#5b6275; font-size:1.05rem; max-width:680px; margin:12px auto 4px;}
 
       .service-header {
         color:#fff; font-weight:800; letter-spacing:.05em; font-size:1.05rem;
@@ -88,18 +88,18 @@ st.markdown(
         border-radius:16px; padding:16px 12px 10px;
         text-align:center; transition:all .18s ease; min-height:176px;
       }
-      .tcard:hover {transform:translateY(-4px); box-shadow:0 14px 30px rgba(0,0,0,.4);}
-      .tname {font-weight:700; color:#fff; font-size:1rem; margin-top:8px;}
-      .trole {color:#9aa1b4; font-size:.8rem; line-height:1.35; margin-top:3px;}
+      .tcard:hover {transform:translateY(-4px); box-shadow:0 14px 30px rgba(31,36,51,.18);}
+      .tname {font-weight:700; color:#1F2433; font-size:1rem; margin-top:8px;}
+      .trole {color:#6b7280; font-size:.8rem; line-height:1.35; margin-top:3px;}
 
       /* En-tête de fiche agent */
       .ahead {
         display:flex; align-items:center; gap:18px;
-        background:linear-gradient(180deg,#191B24 0%,#14161d 100%);
-        border:1px solid #272a38; border-radius:18px; padding:18px 22px; margin-bottom:8px;
+        background:#fff; border:1px solid #e6e9f0; border-radius:18px;
+        padding:18px 22px; margin-bottom:8px; box-shadow:0 4px 16px rgba(31,36,51,.06);
       }
-      .ahead .nm {font-size:1.7rem; font-weight:800; color:#fff; line-height:1.1;}
-      .ahead .rl {color:#cfd3df; font-size:1rem; margin-top:2px;}
+      .ahead .nm {font-size:1.7rem; font-weight:800; color:#1F2433; line-height:1.1;}
+      .ahead .rl {color:#5b6275; font-size:1rem; margin-top:2px;}
       .badge {display:inline-block; color:#fff; font-size:.72rem; font-weight:700;
         padding:3px 10px; border-radius:999px; margin-top:8px;}
 
@@ -117,8 +117,9 @@ st.markdown(
       @media (prefers-reduced-motion: reduce){.avatar-anim{animation:none;}}
 
       .mission-item {
-        background:#14161d; border:1px solid #272a38; border-left:3px solid #FF5A4C;
-        border-radius:10px; padding:11px 14px; margin-bottom:8px; color:#dfe3ee;
+        background:#fff; border:1px solid #e6e9f0; border-left:3px solid #FF5A4C;
+        border-radius:10px; padding:11px 14px; margin-bottom:8px; color:#1F2433;
+        box-shadow:0 2px 8px rgba(31,36,51,.05);
       }
     </style>
     """,
@@ -248,8 +249,8 @@ if st.session_state.agent_actif is None:
                 coul = service["couleur"]
                 st.markdown(
                     f'<div class="tcard" style="background:linear-gradient(180deg,'
-                    f'{coul}2e 0%, {coul}10 55%, rgba(20,22,29,0.95) 100%);'
-                    f'border:1px solid {coul}66;border-top:4px solid {coul};">'
+                    f'{coul}2b 0%, #ffffff 62%);'
+                    f'border:1px solid {coul}55;border-top:4px solid {coul};">'
                     f'{avatar_html(cle, 64)}'
                     f'<div class="tname">{NOMS[cle]}</div>'
                     f'<div class="trole">{LIBELLES[cle]}</div></div>',
@@ -275,8 +276,8 @@ else:
 
     # En-tête
     st.markdown(
-        f'<div class="ahead" style="background:linear-gradient(180deg,{couleur}30 0%,'
-        f' rgba(26,30,42,0.96) 70%);border-color:{couleur}66;">{avatar_html(cle, 88)}'
+        f'<div class="ahead" style="background:linear-gradient(180deg,{couleur}26 0%,'
+        f' #ffffff 70%);border-color:{couleur}55;">{avatar_html(cle, 88)}'
         f'<div><div class="nm">{nom}</div><div class="rl">{role}</div>'
         f'<span class="badge" style="background:{couleur};">'
         f'{service["icone"]} {service["nom"]}</span></div></div>',
