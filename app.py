@@ -163,6 +163,7 @@ plateforme = charger_plateforme()
 st.session_state.setdefault("agent_actif", None)
 st.session_state.setdefault("historique", {})       # cle -> [{role, content}]
 st.session_state.setdefault("taches_rec", {})       # cle -> [str]
+st.session_state.setdefault("pending", {})          # cle -> question en attente de réponse
 
 org = organigramme()
 COULEUR_SERVICE = {m: s["couleur"] for s in org for m in s["membres"]}
@@ -316,13 +317,31 @@ else:
     # ---- Onglet Conversation + historique ----
     with onglet_chat:
         historique = st.session_state.historique.setdefault(cle, [])
-        if not historique:
+        icone_agent = PRESENTATION.get(cle, {}).get("icone", "🤖")
+        question_en_attente = st.session_state.pending.get(cle)
+
+        if not historique and not question_en_attente:
             st.caption(f"Posez votre première question à {nom}. L'historique apparaîtra ici.")
         for msg in historique:
-            avatar = "🧑" if msg["role"] == "user" else PRESENTATION.get(cle, {}).get("icone", "🤖")
+            avatar = "🧑" if msg["role"] == "user" else icone_agent
             with st.chat_message(msg["role"], avatar=avatar):
                 st.markdown(msg["content"])
-        if historique and historique[-1]["role"] == "assistant":
+
+        if question_en_attente:
+            # La réponse s'écrit au fil de l'eau (streaming) -> perçu plus rapide.
+            with st.chat_message("assistant", avatar=icone_agent):
+                try:
+                    reponse = st.write_stream(plateforme.stream_agent(cle, question_en_attente))
+                except Exception as exc:  # noqa: BLE001
+                    reponse = (
+                        f"⚠️ Erreur : {exc}\n\n"
+                        "Vérifiez que la clé API est bien configurée (Secrets)."
+                    )
+                    st.markdown(reponse)
+            historique.append({"role": "assistant", "content": str(reponse)})
+            st.session_state.pending[cle] = None
+            st.rerun()
+        elif historique and historique[-1]["role"] == "assistant":
             lecteur_vocal(historique[-1]["content"])
 
         with st.form(f"chat_{cle}", clear_on_submit=True):
@@ -332,23 +351,15 @@ else:
                 height=90,
             )
             envoye = st.form_submit_button("Envoyer ✉️", type="primary", use_container_width=True)
-        col_a, col_b = st.columns([1, 4])
-        with col_a:
-            if st.button("🗑️ Effacer l'historique", use_container_width=True):
-                st.session_state.historique[cle] = []
-                st.rerun()
+        if st.button("🗑️ Effacer l'historique", use_container_width=True):
+            st.session_state.historique[cle] = []
+            st.session_state.pending[cle] = None
+            st.rerun()
 
         if envoye and question.strip():
+            # On affiche la demande TOUT DE SUITE, la réponse arrive juste après.
             historique.append({"role": "user", "content": question.strip()})
-            with st.spinner(f"{nom} réfléchit…"):
-                try:
-                    reponse = plateforme.executer_agent(cle, question.strip())
-                except Exception as exc:  # noqa: BLE001
-                    reponse = (
-                        f"⚠️ Erreur : {exc}\n\n"
-                        "Vérifiez que la clé API est bien configurée (Secrets / `.env`)."
-                    )
-            historique.append({"role": "assistant", "content": reponse})
+            st.session_state.pending[cle] = question.strip()
             st.rerun()
 
     # ---- Onglet Missions ----

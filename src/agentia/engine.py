@@ -157,6 +157,38 @@ class AgentiaPlatform:
         resultat = self._graphe.invoke(etat)
         return str(resultat["resultat"])
 
+    def stream_agent(
+        self,
+        cle_agent: str,
+        sujet: str,
+        contexte: str = "Aucun contexte particulier.",
+        objectif: str = "Produire un livrable professionnel et exploitable.",
+    ):
+        """Génère la réponse d'un agent au fil de l'eau (streaming).
+
+        Renvoie un itérateur de morceaux de texte, pour un affichage progressif
+        (perçu comme bien plus rapide). Utilisé par l'interface de conversation.
+        """
+        if cle_agent not in self.config_agents:
+            raise KeyError(
+                f"Agent inconnu : '{cle_agent}'. "
+                f"Agents disponibles : {', '.join(self.config_agents)}"
+            )
+        etat: EtatAgent = {
+            "sujet": sujet,
+            "contexte": contexte,
+            "objectif": objectif,
+            "agent": cle_agent,
+        }
+        messages = [
+            SystemMessage(content=self._prompt_systeme(cle_agent)),
+            HumanMessage(content=self._prompt_tache(cle_agent, etat)),
+        ]
+        for morceau in self.llm.stream(messages):
+            texte = getattr(morceau, "content", "")
+            if texte:
+                yield texte
+
     def executer_auto(
         self,
         sujet: str,
