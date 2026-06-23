@@ -34,7 +34,7 @@ SERVICES: list[dict] = [
         "nom": "Ressources Humaines",
         "icone": "👥",
         "couleur": "#EC4899",
-        "membres": ["responsable_rh", "charge_sourcing"],
+        "membres": ["responsable_rh"],
     },
     {
         "id": "marketing",
@@ -51,7 +51,7 @@ SERVICES: list[dict] = [
         "nom": "Commercial",
         "icone": "💼",
         "couleur": "#22C55E",
-        "membres": ["ingenieur_commercial", "charge_prospection"],
+        "membres": ["ingenieur_commercial", "charge_prospection", "charge_sourcing"],
     },
     {
         "id": "appels_offres",
