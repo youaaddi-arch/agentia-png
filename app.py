@@ -33,7 +33,10 @@ except ImportError:
 # Sur Streamlit Community Cloud, les clés sont saisies dans « Secrets ».
 # On les recopie dans les variables d'environnement pour le moteur.
 try:
-    for _cle in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AGENTIA_MODEL"):
+    for _cle in (
+        "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AGENTIA_MODEL",
+        "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN",
+    ):
         if _cle in st.secrets and not os.getenv(_cle):
             os.environ[_cle] = str(st.secrets[_cle])
 except Exception:  # noqa: BLE001 — aucun secret défini (ex. en local) : on ignore.
