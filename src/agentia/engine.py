@@ -205,13 +205,20 @@ class AgentiaPlatform:
             return g.rechercher_drive(requete)
 
         @tool
+        def envoyer_email(destinataire: str, sujet: str, message: str) -> str:
+            """ENVOIE réellement un email. À utiliser quand l'utilisateur demande
+            de s'envoyer quelque chose à lui-même (« envoie-moi »). Mets
+            destinataire='moi' pour utiliser son adresse. Le message peut contenir
+            les liens des fichiers Drive trouvés."""
+            return g.envoyer_email(destinataire, sujet, message)
+
+        @tool
         def preparer_brouillon_email(destinataire: str, sujet: str, message: str) -> str:
-            """Prépare un BROUILLON d'email Gmail (ne l'envoie pas). À utiliser
-            quand l'utilisateur demande d'écrire / envoyer un email. Le message
-            peut contenir les liens des fichiers Drive trouvés."""
+            """Prépare un BROUILLON Gmail (n'envoie pas). À utiliser pour un
+            destinataire EXTERNE (client, collègue), par sécurité."""
             return g.creer_brouillon_email(destinataire, sujet, message)
 
-        return [chercher_dans_drive, preparer_brouillon_email]
+        return [chercher_dans_drive, envoyer_email, preparer_brouillon_email]
 
     def repondre_avec_outils(self, cle_agent: str, message: str) -> str:
         """Fait répondre un agent en lui donnant accès au Drive et à Gmail.
@@ -243,10 +250,11 @@ class AgentiaPlatform:
             "phrase entière. Si l'utilisateur fait une petite faute de frappe "
             "(ex. 'PBU' au lieu de 'BPU'), tente aussi la variante la plus "
             "probable.\n"
-            "- Pour envoyer un fichier par mail : si l'utilisateur n'a pas donné "
-            "d'adresse, demande-la (tu ne peux pas la deviner), puis prépare un "
-            "BROUILLON contenant les liens des fichiers. Tu ne peux PAS lire la "
-            "boîte mail ni envoyer directement : tu prépares seulement un brouillon."
+            "- Pour les emails : quand l'utilisateur dit « envoie-moi » / « à "
+            "moi-même », ENVOIE réellement le message à sa propre adresse avec "
+            "l'outil envoyer_email (destinataire='moi'), sans redemander. Pour un "
+            "destinataire EXTERNE (client, collègue), prépare un BROUILLON. "
+            "Inclus toujours les liens des fichiers Drive trouvés dans le message."
             + info_email
         )
         messages = [

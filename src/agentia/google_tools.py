@@ -113,37 +113,62 @@ def rechercher_drive(requete: str, maximum: int = 20) -> str:
     return f"{len(fichiers)} fichier(s) contenant « {mots} » :\n" + "\n".join(lignes)
 
 
+# Adresse de l'utilisateur par défaut (surchargeable via GOOGLE_USER_EMAIL).
+_EMAIL_DEFAUT = "youaaddi@parisnordgroupe.fr"
+
+_ALIAS_MOI = ("", "moi", "me", "moi-même", "moi meme", "moimeme", "self", "soi")
+
+
 def adresse_proprietaire() -> str:
-    """Adresse email de l'utilisateur (pour « envoie-moi »), si configurée."""
-    return os.getenv("GOOGLE_USER_EMAIL", "").strip()
+    """Adresse email de l'utilisateur (pour « envoie-moi »)."""
+    return (os.getenv("GOOGLE_USER_EMAIL") or _EMAIL_DEFAUT).strip()
+
+
+def _resoudre_destinataire(destinataire: str) -> str:
+    """Remplace « moi / à moi-même… » par l'adresse de l'utilisateur."""
+    dest = (destinataire or "").strip()
+    if dest.lower() in _ALIAS_MOI:
+        return adresse_proprietaire()
+    return dest
+
+
+def _message_mime(destinataire: str, sujet: str, message: str) -> str:
+    mime = MIMEText(message)
+    mime["to"] = destinataire
+    mime["subject"] = sujet
+    return base64.urlsafe_b64encode(mime.as_bytes()).decode()
+
+
+def envoyer_email(destinataire: str, sujet: str, message: str) -> str:
+    """Envoie RÉELLEMENT un email (à utiliser quand c'est pour l'utilisateur)."""
+    dest = _resoudre_destinataire(destinataire)
+    if not dest:
+        return "Aucune adresse de destinataire connue."
+    try:
+        service = _service("gmail", "v1")
+        raw = _message_mime(dest, sujet, message)
+        service.users().messages().send(userId="me", body={"raw": raw}).execute()
+    except Exception as exc:  # noqa: BLE001
+        return f"Erreur lors de l'envoi : {exc}"
+    return f"✅ Email envoyé à {dest} (sujet : « {sujet} »)."
 
 
 def creer_brouillon_email(destinataire: str, sujet: str, message: str) -> str:
-    """Crée un BROUILLON Gmail (n'envoie rien) et renvoie une confirmation."""
-    dest = (destinataire or "").strip()
-    # « envoie-moi », « à moi-même »… -> on utilise l'adresse de l'utilisateur.
-    if dest.lower() in ("", "moi", "me", "moi-même", "moi meme", "self", "soi", "moimeme"):
-        dest = adresse_proprietaire()
+    """Crée un BROUILLON Gmail (n'envoie rien) — pour les destinataires externes."""
+    dest = _resoudre_destinataire(destinataire)
     if not dest:
-        return (
-            "Aucune adresse de destinataire connue. Indiquez l'adresse email "
-            "à laquelle envoyer (ou configurez GOOGLE_USER_EMAIL)."
-        )
-    destinataire = dest
+        return "Aucune adresse de destinataire connue. Indiquez l'adresse email."
     try:
         service = _service("gmail", "v1")
-        mime = MIMEText(message)
-        mime["to"] = destinataire
-        mime["subject"] = sujet
-        raw = base64.urlsafe_b64encode(mime.as_bytes()).decode()
+        raw = _message_mime(dest, sujet, message)
         service.users().drafts().create(
             userId="me", body={"message": {"raw": raw}}
         ).execute()
     except Exception as exc:  # noqa: BLE001
         return f"Erreur lors de la création du brouillon : {exc}"
     return (
-        f"✅ Brouillon préparé pour {destinataire} (sujet : « {sujet} »). "
-        "Il vous attend dans vos brouillons Gmail — à vous de l'envoyer."
+        f"✅ Brouillon préparé pour {dest} (sujet : « {sujet} »). "
+        "Il vous attend dans vos brouillons Gmail."
     )
 
 
