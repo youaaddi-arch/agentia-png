@@ -36,6 +36,7 @@ try:
     for _cle in (
         "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AGENTIA_MODEL",
         "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN",
+        "GOOGLE_USER_EMAIL",
     ):
         if _cle in st.secrets and not os.getenv(_cle):
             os.environ[_cle] = str(st.secrets[_cle])

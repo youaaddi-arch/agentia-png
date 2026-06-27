@@ -113,8 +113,23 @@ def rechercher_drive(requete: str, maximum: int = 20) -> str:
     return f"{len(fichiers)} fichier(s) contenant « {mots} » :\n" + "\n".join(lignes)
 
 
+def adresse_proprietaire() -> str:
+    """Adresse email de l'utilisateur (pour « envoie-moi »), si configurée."""
+    return os.getenv("GOOGLE_USER_EMAIL", "").strip()
+
+
 def creer_brouillon_email(destinataire: str, sujet: str, message: str) -> str:
     """Crée un BROUILLON Gmail (n'envoie rien) et renvoie une confirmation."""
+    dest = (destinataire or "").strip()
+    # « envoie-moi », « à moi-même »… -> on utilise l'adresse de l'utilisateur.
+    if dest.lower() in ("", "moi", "me", "moi-même", "moi meme", "self", "soi", "moimeme"):
+        dest = adresse_proprietaire()
+    if not dest:
+        return (
+            "Aucune adresse de destinataire connue. Indiquez l'adresse email "
+            "à laquelle envoyer (ou configurez GOOGLE_USER_EMAIL)."
+        )
+    destinataire = dest
     try:
         service = _service("gmail", "v1")
         mime = MIMEText(message)

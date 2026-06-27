@@ -224,6 +224,16 @@ class AgentiaPlatform:
         dispatch = {o.name: o for o in outils}
         llm = self.llm.bind_tools(outils)
 
+        from agentia.google_tools import adresse_proprietaire
+
+        email_proprio = adresse_proprietaire()
+        info_email = (
+            f"\n- L'adresse email de l'utilisateur est {email_proprio}. Quand il "
+            "dit « envoie-moi » ou « à moi-même », utilise CETTE adresse comme "
+            "destinataire, sans la redemander."
+            if email_proprio
+            else ""
+        )
         consigne = (
             "\n\nTu disposes d'OUTILS réels connectés au Drive et à Gmail de "
             "l'utilisateur : utilise-les pour agir concrètement plutôt que de "
@@ -237,6 +247,7 @@ class AgentiaPlatform:
             "d'adresse, demande-la (tu ne peux pas la deviner), puis prépare un "
             "BROUILLON contenant les liens des fichiers. Tu ne peux PAS lire la "
             "boîte mail ni envoyer directement : tu prépares seulement un brouillon."
+            + info_email
         )
         messages = [
             SystemMessage(content=self._prompt_systeme(cle_agent) + consigne),
