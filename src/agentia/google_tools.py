@@ -50,6 +50,8 @@ SCOPES = [
 _NOREPLY = (
     "noreply", "no-reply", "no_reply", "donotreply", "do-not-reply",
     "ne-pas-repondre", "nepasrepondre", "mailer-daemon", "postmaster",
+    "newsletter", "marketing", "notification", "notifications", "mailing",
+    "campaign", "newsletters",
 )
 
 _CLES = ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN")
@@ -205,10 +207,16 @@ def lister_emails_a_traiter(maximum: int = 12, jours: int = 7) -> "list | str":
 
     try:
         service = _service("gmail", "v1")
+        # category:primary -> uniquement les vrais messages personnels :
+        # exclut la pub/Promotions, les réseaux sociaux, les notifications.
+        requete_gmail = (
+            f"in:inbox category:primary newer_than:{jours}d "
+            "-category:promotions -category:social -category:updates -category:forums"
+        )
         liste = (
             service.users()
             .messages()
-            .list(userId="me", q=f"in:inbox newer_than:{jours}d", maxResults=maximum)
+            .list(userId="me", q=requete_gmail, maxResults=maximum)
             .execute()
         )
         resultats = []
