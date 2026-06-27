@@ -79,15 +79,16 @@ def _service(api: str, version: str):
     return build(api, version, credentials=_credentials(), cache_discovery=False)
 
 
-def rechercher_drive(requete: str, maximum: int = 20) -> str:
+def rechercher_drive(requete: str, maximum: int = 20, mode: str = "and") -> str:
     """Cherche des fichiers dans le Drive par MOT-CLÉ (pas la phrase entière).
 
     On extrait les mots utiles de la demande et on cherche les fichiers dont le
     nom contient ces mots. Ainsi « les pièces BPU » trouve tout ce qui contient
-    « BPU ».
+    « BPU ». ``mode='or'`` élargit (n'importe quel mot) — utile pour du contexte.
     """
     cles = _mots_cles(requete)
-    conditions = " and ".join(
+    liaison = " or " if mode == "or" else " and "
+    conditions = liaison.join(
         f"name contains '{m.replace(chr(39), chr(92) + chr(39))}'" for m in cles
     )
     requete_drive = f"({conditions}) and trashed = false" if conditions else "trashed = false"
@@ -179,11 +180,26 @@ def creer_brouillon_email(destinataire: str, sujet: str, message: str) -> str:
     )
 
 
+def _extraire_corps(payload: dict) -> str:
+    """Extrait le texte d'un email (parcourt les parties MIME)."""
+    donnees = payload.get("body", {}).get("data")
+    if donnees and payload.get("mimeType", "").startswith("text/plain"):
+        return base64.urlsafe_b64decode(donnees.encode()).decode("utf-8", "replace")
+    for partie in payload.get("parts", []) or []:
+        texte = _extraire_corps(partie)
+        if texte:
+            return texte
+    # repli : si aucune partie text/plain, on prend le body brut s'il existe
+    if donnees:
+        return base64.urlsafe_b64decode(donnees.encode()).decode("utf-8", "replace")
+    return ""
+
+
 def lister_emails_a_traiter(maximum: int = 12, jours: int = 7) -> "list | str":
     """Liste les emails récents de la boîte de réception (hors no-reply).
 
     Renvoie une liste de dicts {threadId, from_name, from_email, subject,
-    message_id, snippet}, ou un message d'erreur (str).
+    message_id, snippet, corps}, ou un message d'erreur (str).
     """
     import email.utils
 
@@ -197,18 +213,9 @@ def lister_emails_a_traiter(maximum: int = 12, jours: int = 7) -> "list | str":
         )
         resultats = []
         for m in liste.get("messages", []):
-            msg = (
-                service.users()
-                .messages()
-                .get(
-                    userId="me",
-                    id=m["id"],
-                    format="metadata",
-                    metadataHeaders=["From", "Subject", "Message-ID"],
-                )
-                .execute()
-            )
-            entetes = {h["name"]: h["value"] for h in msg.get("payload", {}).get("headers", [])}
+            msg = service.users().messages().get(userId="me", id=m["id"], format="full").execute()
+            payload = msg.get("payload", {})
+            entetes = {h["name"]: h["value"] for h in payload.get("headers", [])}
             _, adresse = email.utils.parseaddr(entetes.get("From", ""))
             if not adresse or any(k in adresse.lower() for k in _NOREPLY):
                 continue
@@ -221,6 +228,7 @@ def lister_emails_a_traiter(maximum: int = 12, jours: int = 7) -> "list | str":
                     "subject": entetes.get("Subject", "(sans objet)"),
                     "message_id": entetes.get("Message-ID"),
                     "snippet": msg.get("snippet", ""),
+                    "corps": _extraire_corps(payload)[:3000],
                 }
             )
     except Exception as exc:  # noqa: BLE001

@@ -293,14 +293,23 @@ class AgentiaPlatform:
         prompt_systeme = self._prompt_systeme("assistante_direction")
         prepares, erreurs = [], []
         for mail in emails:
+            # Connaissances : on cherche dans le Drive des documents liés au sujet.
+            contexte_drive = g.rechercher_drive(mail["subject"], maximum=5, mode="or")
+            corps_recu = mail.get("corps") or mail.get("snippet", "")
             consigne = (
-                "Rédige UNIQUEMENT le corps d'une réponse professionnelle, "
-                "courtoise et concise (en français) à l'email ci-dessous. Ne mets "
-                "ni objet ni en-tête, seulement le texte de la réponse, prêt à "
-                "relire et envoyer.\n\n"
+                "Tu es l'assistante de direction. ANALYSE d'abord le contenu et le "
+                "contexte de l'email reçu ci-dessous, puis rédige UNIQUEMENT le corps "
+                "d'une réponse professionnelle, courtoise et ADAPTÉE au contexte (en "
+                "français). Appuie-toi sur les DOCUMENTS DU DRIVE listés si (et "
+                "seulement si) ils sont pertinents — tu peux mentionner ou joindre "
+                "leurs liens. N'invente jamais d'information.\n\n"
+                "=== EMAIL REÇU ===\n"
                 f"Expéditeur : {mail['from_name']} <{mail['from_email']}>\n"
                 f"Objet : {mail['subject']}\n"
-                f"Aperçu reçu : {mail['snippet']}"
+                f"Message :\n{corps_recu}\n\n"
+                "=== DOCUMENTS DU DRIVE POTENTIELLEMENT UTILES ===\n"
+                f"{contexte_drive}\n\n"
+                "Réponds avec le TEXTE de la réponse uniquement (ni objet, ni en-tête)."
             )
             try:
                 texte = self.llm.invoke(
