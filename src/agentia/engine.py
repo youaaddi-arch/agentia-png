@@ -199,23 +199,19 @@ class AgentiaPlatform:
 
         @tool
         def chercher_dans_drive(requete: str) -> str:
-            """Cherche des fichiers dans le Google Drive de l'utilisateur par nom
-            (ex. un tableau, un contrat). Renvoie les noms et les liens."""
+            """Cherche des fichiers dans le Google Drive de l'utilisateur.
+            Passe le MOT-CLÉ du document (ex. 'BPU', 'convention'), pas la phrase
+            entière. Renvoie les noms et les liens des fichiers trouvés."""
             return g.rechercher_drive(requete)
-
-        @tool
-        def chercher_des_emails(requete: str) -> str:
-            """Cherche des emails dans la boîte Gmail de l'utilisateur (syntaxe
-            Gmail, ex. 'from:client facture'). Renvoie objet, expéditeur, date."""
-            return g.rechercher_emails(requete)
 
         @tool
         def preparer_brouillon_email(destinataire: str, sujet: str, message: str) -> str:
             """Prépare un BROUILLON d'email Gmail (ne l'envoie pas). À utiliser
-            quand l'utilisateur demande d'écrire / envoyer un email."""
+            quand l'utilisateur demande d'écrire / envoyer un email. Le message
+            peut contenir les liens des fichiers Drive trouvés."""
             return g.creer_brouillon_email(destinataire, sujet, message)
 
-        return [chercher_dans_drive, chercher_des_emails, preparer_brouillon_email]
+        return [chercher_dans_drive, preparer_brouillon_email]
 
     def repondre_avec_outils(self, cle_agent: str, message: str) -> str:
         """Fait répondre un agent en lui donnant accès au Drive et à Gmail.
@@ -232,8 +228,15 @@ class AgentiaPlatform:
             "\n\nTu disposes d'OUTILS réels connectés au Drive et à Gmail de "
             "l'utilisateur : utilise-les pour agir concrètement plutôt que de "
             "donner des conseils généraux. N'invente JAMAIS de fichier ni de "
-            "résultat : appuie-toi uniquement sur ce que renvoient les outils. "
-            "Pour les emails, prépare un BROUILLON (n'envoie jamais directement)."
+            "résultat : appuie-toi uniquement sur ce que renvoient les outils.\n"
+            "- Pour chercher un fichier, passe le MOT-CLÉ (ex. 'BPU'), pas la "
+            "phrase entière. Si l'utilisateur fait une petite faute de frappe "
+            "(ex. 'PBU' au lieu de 'BPU'), tente aussi la variante la plus "
+            "probable.\n"
+            "- Pour envoyer un fichier par mail : si l'utilisateur n'a pas donné "
+            "d'adresse, demande-la (tu ne peux pas la deviner), puis prépare un "
+            "BROUILLON contenant les liens des fichiers. Tu ne peux PAS lire la "
+            "boîte mail ni envoyer directement : tu prépares seulement un brouillon."
         )
         messages = [
             SystemMessage(content=self._prompt_systeme(cle_agent) + consigne),

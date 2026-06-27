@@ -20,7 +20,24 @@ from __future__ import annotations
 
 import base64
 import os
+import re
 from email.mime.text import MIMEText
+
+# Mots vides ignorés lors de la recherche (on ne garde que les mots utiles).
+_STOPWORDS = {
+    "le", "la", "les", "un", "une", "des", "du", "de", "mon", "ma", "mes",
+    "dans", "sur", "et", "ou", "ce", "cette", "fichier", "fichiers", "document",
+    "documents", "tableau", "tableaux", "piece", "pieces", "pièce", "pièces",
+    "drive", "trouve", "trouver", "cherche", "chercher", "moi", "svp", "stp",
+    "plait", "envoie", "envoyer", "mail", "email", "par", "les", "tout", "toutes",
+}
+
+
+def _mots_cles(requete: str) -> list[str]:
+    """Extrait les mots utiles d'une demande (ignore les mots vides)."""
+    mots = re.findall(r"[A-Za-z0-9À-ÿ_.-]{2,}", requete)
+    cles = [m for m in mots if m.lower() not in _STOPWORDS]
+    return cles or mots
 
 # Lecture du Drive + rédaction de brouillons Gmail (pas d'envoi auto).
 SCOPES = [
@@ -55,15 +72,24 @@ def _service(api: str, version: str):
     return build(api, version, credentials=_credentials(), cache_discovery=False)
 
 
-def rechercher_drive(requete: str, maximum: int = 10) -> str:
-    """Cherche des fichiers dans le Drive par nom et renvoie un texte lisible."""
-    requete_safe = requete.replace("'", "\\'")
+def rechercher_drive(requete: str, maximum: int = 20) -> str:
+    """Cherche des fichiers dans le Drive par MOT-CLÉ (pas la phrase entière).
+
+    On extrait les mots utiles de la demande et on cherche les fichiers dont le
+    nom contient ces mots. Ainsi « les pièces BPU » trouve tout ce qui contient
+    « BPU ».
+    """
+    cles = _mots_cles(requete)
+    conditions = " and ".join(
+        f"name contains '{m.replace(chr(39), chr(92) + chr(39))}'" for m in cles
+    )
+    requete_drive = f"({conditions}) and trashed = false" if conditions else "trashed = false"
     try:
         service = _service("drive", "v3")
         reponse = (
             service.files()
             .list(
-                q=f"name contains '{requete_safe}' and trashed = false",
+                q=requete_drive,
                 pageSize=maximum,
                 fields="files(id,name,mimeType,webViewLink,modifiedTime)",
                 orderBy="modifiedTime desc",
@@ -74,13 +100,17 @@ def rechercher_drive(requete: str, maximum: int = 10) -> str:
         return f"Erreur lors de la recherche Drive : {exc}"
 
     fichiers = reponse.get("files", [])
+    mots = ", ".join(cles) if cles else requete
     if not fichiers:
-        return f"Aucun fichier trouvé pour « {requete} »."
+        return (
+            f"Aucun fichier trouvé contenant « {mots} ». "
+            "Essayez un autre mot-clé ou vérifiez l'orthographe du nom."
+        )
     lignes = [
         f"- {f['name']} : {f.get('webViewLink', '(lien indisponible)')}"
         for f in fichiers
     ]
-    return f"{len(fichiers)} fichier(s) trouvé(s) pour « {requete} » :\n" + "\n".join(lignes)
+    return f"{len(fichiers)} fichier(s) contenant « {mots} » :\n" + "\n".join(lignes)
 
 
 def creer_brouillon_email(destinataire: str, sujet: str, message: str) -> str:
