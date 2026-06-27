@@ -276,6 +276,58 @@ class AgentiaPlatform:
                 )
         return str(getattr(reponse, "content", "") or "(réponse vide)")
 
+    def predrafter_reponses(self, maximum: int = 10) -> str:
+        """Pré-rédige (en brouillon) une réponse à chaque email reçu (hors no-reply).
+
+        Lit la boîte de réception, génère une réponse pour chaque expéditeur réel,
+        et crée un brouillon de réponse rattaché à la conversation. N'envoie rien.
+        """
+        from agentia import google_tools as g
+
+        emails = g.lister_emails_a_traiter(maximum)
+        if isinstance(emails, str):
+            return emails  # message d'erreur (ex. autorisation lecture manquante)
+        if not emails:
+            return "Aucun email à traiter (boîte vide, ou uniquement des no-reply)."
+
+        prompt_systeme = self._prompt_systeme("assistante_direction")
+        prepares, erreurs = [], []
+        for mail in emails:
+            consigne = (
+                "Rédige UNIQUEMENT le corps d'une réponse professionnelle, "
+                "courtoise et concise (en français) à l'email ci-dessous. Ne mets "
+                "ni objet ni en-tête, seulement le texte de la réponse, prêt à "
+                "relire et envoyer.\n\n"
+                f"Expéditeur : {mail['from_name']} <{mail['from_email']}>\n"
+                f"Objet : {mail['subject']}\n"
+                f"Aperçu reçu : {mail['snippet']}"
+            )
+            try:
+                texte = self.llm.invoke(
+                    [
+                        SystemMessage(content=prompt_systeme),
+                        HumanMessage(content=consigne),
+                    ]
+                ).content
+            except Exception as exc:  # noqa: BLE001
+                return f"Erreur lors de la génération des réponses : {exc}"
+            sujet = mail["subject"]
+            if not sujet.lower().startswith("re:"):
+                sujet = f"Re: {sujet}"
+            statut = g.creer_brouillon_reponse(
+                mail["threadId"], mail["from_email"], sujet, str(texte), mail.get("message_id")
+            )
+            etiquette = f"{mail['from_name'] or mail['from_email']} — {mail['subject']}"
+            (prepares if statut == "ok" else erreurs).append(etiquette)
+
+        lignes = [f"✅ {len(prepares)} brouillon(s) de réponse préparé(s) :"]
+        lignes += [f"- {p}" for p in prepares]
+        if erreurs:
+            lignes.append(f"\n⚠️ {len(erreurs)} non traité(s) :")
+            lignes += [f"- {e}" for e in erreurs]
+        lignes.append("\nIls vous attendent dans vos brouillons Gmail — à relire et envoyer.")
+        return "\n".join(lignes)
+
     def executer_auto(
         self,
         sujet: str,

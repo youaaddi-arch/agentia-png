@@ -39,11 +39,18 @@ def _mots_cles(requete: str) -> list[str]:
     cles = [m for m in mots if m.lower() not in _STOPWORDS]
     return cles or mots
 
-# Lecture du Drive + rédaction de brouillons Gmail (pas d'envoi auto).
+# Lecture du Drive + lecture des emails + rédaction/envoi Gmail.
 SCOPES = [
     "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.compose",
 ]
+
+# Expéditeurs à NE PAS traiter (pas de réponse à un no-reply).
+_NOREPLY = (
+    "noreply", "no-reply", "no_reply", "donotreply", "do-not-reply",
+    "ne-pas-repondre", "nepasrepondre", "mailer-daemon", "postmaster",
+)
 
 _CLES = ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN")
 
@@ -170,6 +177,77 @@ def creer_brouillon_email(destinataire: str, sujet: str, message: str) -> str:
         f"✅ Brouillon préparé pour {dest} (sujet : « {sujet} »). "
         "Il vous attend dans vos brouillons Gmail."
     )
+
+
+def lister_emails_a_traiter(maximum: int = 12, jours: int = 7) -> "list | str":
+    """Liste les emails récents de la boîte de réception (hors no-reply).
+
+    Renvoie une liste de dicts {threadId, from_name, from_email, subject,
+    message_id, snippet}, ou un message d'erreur (str).
+    """
+    import email.utils
+
+    try:
+        service = _service("gmail", "v1")
+        liste = (
+            service.users()
+            .messages()
+            .list(userId="me", q=f"in:inbox newer_than:{jours}d", maxResults=maximum)
+            .execute()
+        )
+        resultats = []
+        for m in liste.get("messages", []):
+            msg = (
+                service.users()
+                .messages()
+                .get(
+                    userId="me",
+                    id=m["id"],
+                    format="metadata",
+                    metadataHeaders=["From", "Subject", "Message-ID"],
+                )
+                .execute()
+            )
+            entetes = {h["name"]: h["value"] for h in msg.get("payload", {}).get("headers", [])}
+            _, adresse = email.utils.parseaddr(entetes.get("From", ""))
+            if not adresse or any(k in adresse.lower() for k in _NOREPLY):
+                continue
+            nom, _ = email.utils.parseaddr(entetes.get("From", ""))
+            resultats.append(
+                {
+                    "threadId": msg.get("threadId"),
+                    "from_name": nom,
+                    "from_email": adresse,
+                    "subject": entetes.get("Subject", "(sans objet)"),
+                    "message_id": entetes.get("Message-ID"),
+                    "snippet": msg.get("snippet", ""),
+                }
+            )
+    except Exception as exc:  # noqa: BLE001
+        return f"Erreur lors de la lecture des emails : {exc}"
+    return resultats
+
+
+def creer_brouillon_reponse(
+    thread_id: str, destinataire: str, sujet: str, message: str, message_id: str | None = None
+) -> str:
+    """Crée un brouillon de RÉPONSE rattaché à la conversation d'origine."""
+    try:
+        service = _service("gmail", "v1")
+        mime = MIMEText(message)
+        mime["to"] = destinataire
+        mime["subject"] = sujet
+        if message_id:
+            mime["In-Reply-To"] = message_id
+            mime["References"] = message_id
+        raw = base64.urlsafe_b64encode(mime.as_bytes()).decode()
+        corps = {"message": {"raw": raw}}
+        if thread_id:
+            corps["message"]["threadId"] = thread_id
+        service.users().drafts().create(userId="me", body=corps).execute()
+    except Exception as exc:  # noqa: BLE001
+        return f"erreur: {exc}"
+    return "ok"
 
 
 def rechercher_emails(requete: str, maximum: int = 8) -> str:

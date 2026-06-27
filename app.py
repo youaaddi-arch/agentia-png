@@ -397,6 +397,22 @@ else:
             cle, list(TACHES_REC_DEFAUT.get(cle, []))
         )
         st.markdown(f"#### 🔁 Tâches récurrentes de {nom}")
+
+        if cle in AGENTS_GOOGLE and google_actif():
+            st.markdown("**⚡ Action express**")
+            if st.button(
+                "✍️ Pré-rédiger maintenant les réponses à mes emails (en brouillon)",
+                use_container_width=True,
+                type="primary",
+            ):
+                with st.spinner("Aïcha lit vos emails et prépare les brouillons…"):
+                    try:
+                        resultat_pre = plateforme.predrafter_reponses()
+                    except Exception as exc:  # noqa: BLE001
+                        resultat_pre = f"⚠️ Erreur : {exc}"
+                st.info(resultat_pre)
+            st.divider()
+
         if not taches:
             st.info("Aucune tâche récurrente pour l'instant. Ajoutez-en une ci-dessous.")
         for i, tache in enumerate(taches):

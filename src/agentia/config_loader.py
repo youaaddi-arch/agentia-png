@@ -356,7 +356,10 @@ MISSIONS: Dict[str, list[str]] = {
 # Tâche récurrente suggérée par défaut pour chaque agent (modifiable par l'utilisateur).
 TACHES_REC_DEFAUT: Dict[str, list[str]] = {
     "conseiller_strategie": ["Chaque mois : point stratégique et priorités"],
-    "assistante_direction": ["Chaque lundi : préparer l'agenda de la semaine"],
+    "assistante_direction": [
+        "Chaque lundi : préparer l'agenda de la semaine",
+        "Chaque jour : pré-rédiger en brouillon une réponse à tous les mails reçus (sauf no-reply)",
+    ],
     "responsable_rh": ["Chaque mois : vérifier les échéances RH et contrats"],
     "charge_sourcing": ["Chaque semaine : relancer les candidats en cours"],
     "responsable_marketing": ["Chaque mois : bilan des actions marketing"],
