@@ -51,7 +51,8 @@ _NOREPLY = (
     "noreply", "no-reply", "no_reply", "donotreply", "do-not-reply",
     "ne-pas-repondre", "nepasrepondre", "mailer-daemon", "postmaster",
     "newsletter", "marketing", "notification", "notifications", "mailing",
-    "campaign", "newsletters",
+    "campaign", "newsletters", "notice", "notify", "alert", "alerts",
+    "updates", "automated", "bounce", "info@", "hello@", "contact@",
 )
 
 _CLES = ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN")
@@ -207,11 +208,10 @@ def lister_emails_a_traiter(maximum: int = 12, jours: int = 7) -> "list | str":
 
     try:
         service = _service("gmail", "v1")
-        # category:primary -> uniquement les vrais messages personnels :
-        # exclut la pub/Promotions, les réseaux sociaux, les notifications.
+        # On exclut la pub/Promotions et les réseaux sociaux ; les expéditeurs
+        # automatiques (no-reply, alertes…) sont filtrés ensuite par _NOREPLY.
         requete_gmail = (
-            f"in:inbox category:primary newer_than:{jours}d "
-            "-category:promotions -category:social -category:updates -category:forums"
+            f"in:inbox newer_than:{jours}d -category:promotions -category:social"
         )
         liste = (
             service.users()
@@ -219,8 +219,16 @@ def lister_emails_a_traiter(maximum: int = 12, jours: int = 7) -> "list | str":
             .list(userId="me", q=requete_gmail, maxResults=maximum)
             .execute()
         )
+        # Threads ayant déjà un brouillon -> on ne les re-traite pas (anti-doublon).
+        brouillons = (
+            service.users().messages().list(userId="me", q="in:draft", maxResults=100).execute()
+        )
+        threads_traites = {m.get("threadId") for m in brouillons.get("messages", [])}
+
         resultats = []
         for m in liste.get("messages", []):
+            if m.get("threadId") in threads_traites:
+                continue
             msg = service.users().messages().get(userId="me", id=m["id"], format="full").execute()
             payload = msg.get("payload", {})
             entetes = {h["name"]: h["value"] for h in payload.get("headers", [])}
