@@ -1,0 +1,15 @@
+# Dépendances de la plateforme Agentia PNG (LangChain + LangGraph)
+langchain>=0.3.0
+langgraph>=0.2.0
+langchain-anthropic>=0.3.0
+langchain-openai>=0.2.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Interface web optionnelle
+streamlit>=1.30.0
+
+# Accès Google Drive + Gmail pour les agents (optionnel)
+google-api-python-client>=2.0.0
+google-auth>=2.0.0
+google-auth-httplib2>=0.2.0
